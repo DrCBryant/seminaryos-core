@@ -4,7 +4,9 @@ namespace App\Filament\Resources\Applicants\Schemas;
 
 use App\Models\Program;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -34,6 +36,8 @@ class ApplicantForm
                                 TextInput::make('phone')
                                     ->tel()
                                     ->maxLength(50),
+                                TextInput::make('source')
+                                    ->maxLength(255),
                                 Select::make('program_id')
                                     ->label('Program Applied For')
                                     ->relationship('program', 'title', fn ($query) => $query->orderBy('title'))
@@ -51,7 +55,12 @@ class ApplicantForm
                                         'enrolled' => 'Enrolled',
                                     ])
                                     ->required(),
+                                DateTimePicker::make('submitted_at')
+                                    ->seconds(false),
                             ]),
+                        Textarea::make('notes')
+                            ->rows(5)
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

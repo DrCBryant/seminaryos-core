@@ -18,12 +18,8 @@ class ApplicantsTable
     {
         return $table
             ->columns([
-                TextColumn::make('first_name')
-                    ->label('First Name')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('last_name')
-                    ->label('Last Name')
+                TextColumn::make('full_name')
+                    ->label('Applicant')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('email')
@@ -32,6 +28,8 @@ class ApplicantsTable
                 TextColumn::make('phone')
                     ->searchable()
                     ->toggleable(),
+                TextColumn::make('source')
+                    ->toggleable(),
                 TextColumn::make('program.title')
                     ->label('Program Applied For')
                     ->searchable()
@@ -39,6 +37,10 @@ class ApplicantsTable
                 TextColumn::make('status')
                     ->badge()
                     ->sortable(),
+                TextColumn::make('submitted_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('program')
@@ -53,7 +55,8 @@ class ApplicantsTable
                         'accepted' => 'Accepted',
                         'denied' => 'Denied',
                         'enrolled' => 'Enrolled',
-                    ]),
+                    ])
+                    ->multiple(),
                 TrashedFilter::make(),
             ])
             ->recordActions([

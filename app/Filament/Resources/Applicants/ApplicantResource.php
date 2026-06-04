@@ -22,7 +22,7 @@ class ApplicantResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'last_name';
+    protected static ?string $recordTitleAttribute = 'full_name';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Admissions';
 
