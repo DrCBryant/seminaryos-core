@@ -56,4 +56,9 @@ class Program extends BaseModel
     {
         return $this->hasMany(CourseProgram::class);
     }
+
+    public function applicants()
+    {
+        return $this->hasMany(Applicant::class);
+    }
 }
