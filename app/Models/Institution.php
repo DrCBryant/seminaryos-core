@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Institution extends Model
 {
     use HasUuid, SoftDeletes;
-    
+
     protected $fillable = [
         'uuid',
         'name',
@@ -33,14 +33,14 @@ class Institution extends Model
         'max_students',
         'max_storage_mb',
     ];
-    
+
     protected $casts = [
         'settings' => 'array',
         'max_users' => 'integer',
         'max_students' => 'integer',
         'max_storage_mb' => 'integer',
     ];
-    
+
     public function users()
     {
         return $this->belongsToMany(User::class)
@@ -63,6 +63,11 @@ class Institution extends Model
         return $this->hasMany(Program::class);
     }
 
+    public function students()
+    {
+        return $this->hasMany(Student::class);
+    }
+
     public function courses()
     {
         return $this->hasMany(Course::class);
@@ -82,7 +87,7 @@ class Institution extends Model
     {
         return $this->hasMany(CatalogPage::class);
     }
-     
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
