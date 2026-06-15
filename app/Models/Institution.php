@@ -83,6 +83,11 @@ class Institution extends Model
         return $this->hasMany(Catalog::class);
     }
 
+    public function academicTerms()
+    {
+        return $this->hasMany(AcademicTerm::class);
+    }
+
     public function catalogPages()
     {
         return $this->hasMany(CatalogPage::class);
