@@ -37,4 +37,9 @@ class AcademicTerm extends BaseModel
     {
         return $this->belongsTo(Institution::class);
     }
+
+    public function courseEnrollments()
+    {
+        return $this->hasMany(CourseEnrollment::class);
+    }
 }

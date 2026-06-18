@@ -50,4 +50,9 @@ class Course extends BaseModel
     {
         return $this->hasMany(CourseProgram::class);
     }
+
+    public function courseEnrollments()
+    {
+        return $this->hasMany(CourseEnrollment::class);
+    }
 }
