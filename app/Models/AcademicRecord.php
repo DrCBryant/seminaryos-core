@@ -6,10 +6,9 @@ use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class CourseEnrollment extends BaseModel
+class AcademicRecord extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
@@ -19,16 +18,23 @@ class CourseEnrollment extends BaseModel
         'student_id',
         'course_id',
         'academic_term_id',
-        'status',
-        'enrolled_at',
-        'completed_at',
+        'course_enrollment_id',
+        'course_code',
+        'course_title',
+        'credits_attempted',
+        'credits_earned',
         'final_grade',
+        'grade_points',
+        'status',
+        'completed_at',
         'notes',
     ];
 
     protected $casts = [
-        'enrolled_at' => 'datetime',
-        'completed_at' => 'datetime',
+        'credits_attempted' => 'decimal:2',
+        'credits_earned' => 'decimal:2',
+        'grade_points' => 'decimal:2',
+        'completed_at' => 'date',
     ];
 
     public function institution(): BelongsTo
@@ -51,8 +57,8 @@ class CourseEnrollment extends BaseModel
         return $this->belongsTo(AcademicTerm::class);
     }
 
-    public function academicRecord(): HasOne
+    public function courseEnrollment(): BelongsTo
     {
-        return $this->hasOne(AcademicRecord::class);
+        return $this->belongsTo(CourseEnrollment::class);
     }
 }

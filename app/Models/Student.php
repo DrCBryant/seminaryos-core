@@ -59,4 +59,9 @@ class Student extends BaseModel
     {
         return $this->hasMany(CourseEnrollment::class);
     }
+
+    public function academicRecords(): HasMany
+    {
+        return $this->hasMany(AcademicRecord::class);
+    }
 }
