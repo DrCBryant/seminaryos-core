@@ -20,11 +20,19 @@ class FacultyResource extends Resource
 {
     protected static ?string $model = Faculty::class;
 
+    protected static ?string $slug = 'faculty';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAcademicCap;
+
+    protected static ?string $navigationLabel = 'Faculty';
 
     protected static ?string $recordTitleAttribute = 'full_name';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Academic Operations';
+
+    protected static ?string $modelLabel = 'Faculty Member';
+
+    protected static ?string $pluralModelLabel = 'Faculty';
 
     public static function form(Schema $schema): Schema
     {
