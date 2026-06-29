@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Course extends BaseModel
@@ -54,5 +55,10 @@ class Course extends BaseModel
     public function courseEnrollments()
     {
         return $this->hasMany(CourseEnrollment::class);
+    }
+
+    public function teachingAssignments(): HasMany
+    {
+        return $this->hasMany(TeachingAssignment::class);
     }
 }
