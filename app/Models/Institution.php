@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Institution extends Model
@@ -86,6 +87,11 @@ class Institution extends Model
     public function academicTerms()
     {
         return $this->hasMany(AcademicTerm::class);
+    }
+
+    public function faculty(): HasMany
+    {
+        return $this->hasMany(Faculty::class);
     }
 
     public function catalogPages()
