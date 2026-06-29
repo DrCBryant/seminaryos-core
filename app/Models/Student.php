@@ -6,6 +6,8 @@ use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Student extends BaseModel
@@ -16,6 +18,7 @@ class Student extends BaseModel
         'uuid',
         'institution_id',
         'program_id',
+        'applicant_id',
         'first_name',
         'last_name',
         'email',
@@ -37,17 +40,22 @@ class Student extends BaseModel
         );
     }
 
-    public function institution()
+    public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
     }
 
-    public function program()
+    public function program(): BelongsTo
     {
         return $this->belongsTo(Program::class);
     }
 
-    public function courseEnrollments()
+    public function applicant(): BelongsTo
+    {
+        return $this->belongsTo(Applicant::class);
+    }
+
+    public function courseEnrollments(): HasMany
     {
         return $this->hasMany(CourseEnrollment::class);
     }

@@ -6,6 +6,8 @@ use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Applicant extends BaseModel
@@ -24,10 +26,12 @@ class Applicant extends BaseModel
         'source',
         'status',
         'submitted_at',
+        'converted_at',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'converted_at' => 'datetime',
     ];
 
     protected function fullName(): Attribute
@@ -37,13 +41,18 @@ class Applicant extends BaseModel
         );
     }
 
-    public function institution()
+    public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
     }
 
-    public function program()
+    public function program(): BelongsTo
     {
         return $this->belongsTo(Program::class);
+    }
+
+    public function student(): HasOne
+    {
+        return $this->hasOne(Student::class);
     }
 }
