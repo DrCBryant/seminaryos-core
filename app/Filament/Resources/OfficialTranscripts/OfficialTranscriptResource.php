@@ -5,6 +5,7 @@ namespace App\Filament\Resources\OfficialTranscripts;
 use App\Filament\Resources\OfficialTranscripts\Pages\CreateOfficialTranscript;
 use App\Filament\Resources\OfficialTranscripts\Pages\EditOfficialTranscript;
 use App\Filament\Resources\OfficialTranscripts\Pages\ListOfficialTranscripts;
+use App\Filament\Resources\OfficialTranscripts\RelationManagers\LinesRelationManager;
 use App\Filament\Resources\OfficialTranscripts\Schemas\OfficialTranscriptForm;
 use App\Filament\Resources\OfficialTranscripts\Tables\OfficialTranscriptsTable;
 use App\Models\OfficialTranscript;
@@ -46,7 +47,9 @@ class OfficialTranscriptResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            LinesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

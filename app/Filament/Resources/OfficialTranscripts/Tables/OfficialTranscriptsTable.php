@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OfficialTranscripts\Tables;
 
 use App\Filament\Resources\OfficialTranscripts\Schemas\OfficialTranscriptForm;
+use App\Models\AcademicRecord;
 use App\Models\OfficialTranscript;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -21,6 +22,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class OfficialTranscriptsTable
@@ -115,7 +117,17 @@ class OfficialTranscriptsTable
                             ->rows(4),
                     ])
                     ->action(function (OfficialTranscript $record, array $data): void {
-                        $record->loadMissing('student.academicRecords');
+                        if ($record->status === 'issued') {
+                            Notification::make()
+                                ->title('Transcript already issued')
+                                ->body('Issued transcripts are locked and their snapshot lines will not be regenerated.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $record->loadMissing('student.academicRecords.academicTerm', 'lines');
 
                         if ($record->student->academicRecords->isEmpty()) {
                             Notification::make()
@@ -126,6 +138,15 @@ class OfficialTranscriptsTable
 
                             return;
                         }
+
+                        /** @var Collection<int, AcademicRecord> $academicRecords */
+                        $academicRecords = $record->student->academicRecords
+                            ->sortBy([
+                                fn (AcademicRecord $academicRecord) => $academicRecord->academicTerm?->start_date?->timestamp ?? PHP_INT_MAX,
+                                fn (AcademicRecord $academicRecord) => $academicRecord->course_code,
+                                fn (AcademicRecord $academicRecord) => $academicRecord->course_title,
+                            ])
+                            ->values();
 
                         $transcriptNumber = filled($data['transcript_number'] ?? null)
                             ? trim((string) $data['transcript_number'])
@@ -148,6 +169,44 @@ class OfficialTranscriptsTable
                         }
 
                         DB::transaction(function () use ($record, $data, $transcriptNumber): void {
+                            if (in_array($record->status, self::ISSUABLE_STATUSES, true) && $record->lines()->exists()) {
+                                $record->lines()->delete();
+                            }
+
+                            $sortOrder = 1;
+
+                            $record->lines()->createMany(
+                                $academicRecords = $record->student->academicRecords
+                                    ->sortBy([
+                                        fn (AcademicRecord $academicRecord) => $academicRecord->academicTerm?->start_date?->timestamp ?? PHP_INT_MAX,
+                                        fn (AcademicRecord $academicRecord) => $academicRecord->course_code,
+                                        fn (AcademicRecord $academicRecord) => $academicRecord->course_title,
+                                    ])
+                                    ->values()
+                                    ->map(function (AcademicRecord $academicRecord) use (&$sortOrder, $record): array {
+                                        return [
+                                            'institution_id' => $record->institution_id,
+                                            'academic_record_id' => $academicRecord->id,
+                                            'student_id' => $academicRecord->student_id,
+                                            'academic_term_id' => $academicRecord->academic_term_id,
+                                            'term_label' => $academicRecord->academicTerm
+                                                ? "{$academicRecord->academicTerm->name} ({$academicRecord->academicTerm->academic_year})"
+                                                : null,
+                                            'course_code' => $academicRecord->course_code,
+                                            'course_title' => $academicRecord->course_title,
+                                            'credits_attempted' => $academicRecord->credits_attempted,
+                                            'credits_earned' => $academicRecord->credits_earned,
+                                            'final_grade' => $academicRecord->final_grade,
+                                            'grade_points' => $academicRecord->grade_points,
+                                            'status' => $academicRecord->status,
+                                            'completed_at' => $academicRecord->completed_at,
+                                            'sort_order' => $sortOrder++,
+                                            'notes' => $academicRecord->notes,
+                                        ];
+                                    })
+                                    ->all(),
+                            );
+
                             $record->forceFill([
                                 'transcript_number' => $transcriptNumber,
                                 'status' => 'issued',

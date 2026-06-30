@@ -6,6 +6,7 @@ use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class OfficialTranscript extends BaseModel
@@ -41,5 +42,12 @@ class OfficialTranscript extends BaseModel
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    public function lines(): HasMany
+    {
+        return $this->hasMany(OfficialTranscriptLine::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 }

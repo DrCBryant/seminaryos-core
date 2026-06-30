@@ -104,6 +104,11 @@ class Institution extends Model
         return $this->hasMany(OfficialTranscript::class);
     }
 
+    public function officialTranscriptLines(): HasMany
+    {
+        return $this->hasMany(OfficialTranscriptLine::class);
+    }
+
     public function catalogPages()
     {
         return $this->hasMany(CatalogPage::class);
