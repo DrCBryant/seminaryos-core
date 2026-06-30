@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Students\Pages;
 
 use App\Filament\Resources\Students\StudentResource;
+use App\Filament\Resources\Students\Support\TranscriptPreview;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
@@ -15,6 +16,7 @@ class EditStudent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            TranscriptPreview::make(),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),
