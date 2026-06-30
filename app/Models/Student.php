@@ -64,4 +64,9 @@ class Student extends BaseModel
     {
         return $this->hasMany(AcademicRecord::class);
     }
+
+    public function officialTranscripts(): HasMany
+    {
+        return $this->hasMany(OfficialTranscript::class);
+    }
 }

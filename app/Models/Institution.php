@@ -99,6 +99,11 @@ class Institution extends Model
         return $this->hasMany(TeachingAssignment::class);
     }
 
+    public function officialTranscripts(): HasMany
+    {
+        return $this->hasMany(OfficialTranscript::class);
+    }
+
     public function catalogPages()
     {
         return $this->hasMany(CatalogPage::class);
