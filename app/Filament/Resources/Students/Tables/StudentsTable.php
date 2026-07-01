@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Students\Tables;
 
+use App\Filament\Resources\Students\Support\DegreeAuditPreview;
 use App\Filament\Resources\Students\Support\GpaPreview;
 use App\Filament\Resources\Students\Support\TranscriptPreview;
 use Filament\Actions\BulkActionGroup;
@@ -63,6 +64,7 @@ class StudentsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                DegreeAuditPreview::make(),
                 GpaPreview::make(),
                 TranscriptPreview::make(),
                 EditAction::make(),

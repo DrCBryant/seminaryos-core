@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Students\Pages;
 
 use App\Filament\Resources\Students\StudentResource;
+use App\Filament\Resources\Students\Support\DegreeAuditPreview;
 use App\Filament\Resources\Students\Support\GpaPreview;
 use App\Filament\Resources\Students\Support\TranscriptPreview;
 use Filament\Actions\DeleteAction;
@@ -17,6 +18,7 @@ class EditStudent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            DegreeAuditPreview::make(),
             GpaPreview::make(),
             TranscriptPreview::make(),
             DeleteAction::make(),
