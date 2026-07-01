@@ -66,4 +66,9 @@ class Course extends BaseModel
     {
         return $this->hasMany(AcademicRecord::class);
     }
+
+    public function programRequirements(): HasMany
+    {
+        return $this->hasMany(ProgramRequirement::class);
+    }
 }

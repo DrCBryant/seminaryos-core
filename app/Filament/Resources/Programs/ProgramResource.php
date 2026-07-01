@@ -6,6 +6,7 @@ use App\Filament\Resources\Programs\Pages\CreateProgram;
 use App\Filament\Resources\Programs\Pages\EditProgram;
 use App\Filament\Resources\Programs\Pages\ListPrograms;
 use App\Filament\Resources\Programs\RelationManagers\CoursesRelationManager;
+use App\Filament\Resources\Programs\RelationManagers\ProgramRequirementGroupsRelationManager;
 use App\Filament\Resources\Programs\Schemas\ProgramForm;
 use App\Filament\Resources\Programs\Tables\ProgramsTable;
 use App\Models\Program;
@@ -39,6 +40,7 @@ class ProgramResource extends Resource
     {
         return [
             CoursesRelationManager::class,
+            ProgramRequirementGroupsRelationManager::class,
         ];
     }
 

@@ -75,6 +75,16 @@ class Institution extends Model
         return $this->hasMany(Course::class);
     }
 
+    public function programRequirementGroups(): HasMany
+    {
+        return $this->hasMany(ProgramRequirementGroup::class);
+    }
+
+    public function programRequirements(): HasMany
+    {
+        return $this->hasMany(ProgramRequirement::class);
+    }
+
     public function coursePrograms()
     {
         return $this->hasMany(CourseProgram::class);
