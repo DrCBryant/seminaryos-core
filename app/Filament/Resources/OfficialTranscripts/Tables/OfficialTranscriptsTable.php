@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OfficialTranscripts\Tables;
 
 use App\Filament\Resources\OfficialTranscripts\Schemas\OfficialTranscriptForm;
+use App\Filament\Resources\OfficialTranscripts\Support\OfficialTranscriptView;
 use App\Models\AcademicRecord;
 use App\Models\OfficialTranscript;
 use Filament\Actions\Action;
@@ -81,6 +82,7 @@ class OfficialTranscriptsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                OfficialTranscriptView::make(),
                 Action::make('issueTranscript')
                     ->label('Issue Transcript')
                     ->icon('heroicon-o-check-badge')

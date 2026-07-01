@@ -8,7 +8,7 @@ This document defines the technical rules SeminaryOS should follow to deploy cle
 
 SeminaryOS should assume the following ICDSoft-compatible baseline unless an account-specific limitation is confirmed:
 
-- PHP 8.3 or higher
+- PHP 8.4.1 or higher
 - MySQL
 - Apache/LiteSpeed-style hosting behavior
 - [`.htaccess`](../public/.htaccess) support
@@ -22,7 +22,8 @@ SeminaryOS should assume the following ICDSoft-compatible baseline unless an acc
 
 ### PHP and Database
 
-- Use **PHP 8.3** as the safest production baseline unless the ICDSoft account explicitly confirms PHP 8.4 or PHP 8.5 compatibility for the deployed Laravel and package stack.
+- Use **PHP 8.4.1** as the production baseline unless the ICDSoft account explicitly confirms a newer compatible PHP version for the deployed Laravel and package stack.
+- The current SeminaryOS dependency stack includes Symfony 8.1 packages that require **PHP 8.4.1 or higher**, so PHP 8.3 is no longer a valid deployment or CI baseline.
 - Use **MySQL** in production.
 
 ### Sessions, Cache, and Queue
@@ -193,7 +194,7 @@ The following SeminaryOS areas should be reviewed again before expansion:
 
 Use the following default stance unless a specific ICDSoft account proves more capable:
 
-- PHP 8.3
+- PHP 8.4.1
 - MySQL
 - Laravel app outside web root when possible
 - document root mapped to [`public/`](../public/)
