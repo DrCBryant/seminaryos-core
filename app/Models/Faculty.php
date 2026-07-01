@@ -14,6 +14,8 @@ class Faculty extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    protected $table = 'faculty';
+
     protected $fillable = [
         'institution_id',
         'uuid',
