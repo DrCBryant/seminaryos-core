@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Students\Pages;
 
 use App\Filament\Resources\Students\StudentResource;
+use App\Filament\Resources\Students\Support\GpaPreview;
 use App\Filament\Resources\Students\Support\TranscriptPreview;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
@@ -16,6 +17,7 @@ class EditStudent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            GpaPreview::make(),
             TranscriptPreview::make(),
             DeleteAction::make(),
             ForceDeleteAction::make(),
