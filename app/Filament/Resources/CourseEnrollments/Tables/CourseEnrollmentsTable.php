@@ -6,6 +6,8 @@ use App\Models\AcademicRecord;
 use App\Models\AcademicTerm;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\GradeScale;
+use App\Models\GradeValue;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -13,8 +15,10 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -96,9 +100,49 @@ class CourseEnrollmentsTable
                     ->modalHeading('Complete enrollment')
                     ->modalDescription('This will mark the enrollment as completed and create a durable academic record snapshot.')
                     ->form([
+                        Select::make('grade_scale_id')
+                            ->label('Grade scale')
+                            ->options(fn (CourseEnrollment $record): array => GradeScale::query()
+                                ->where('institution_id', $record->institution_id)
+                                ->where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->searchable()
+                            ->preload()
+                            ->live(),
+                        Select::make('grade_value_id')
+                            ->label('Grade value')
+                            ->options(function (CourseEnrollment $record, Get $get): array {
+                                $gradeScaleId = $get('grade_scale_id');
+
+                                if (blank($gradeScaleId)) {
+                                    return [];
+                                }
+
+                                return GradeValue::query()
+                                    ->where('institution_id', $record->institution_id)
+                                    ->where('grade_scale_id', $gradeScaleId)
+                                    ->orderByRaw('CASE WHEN sort_order IS NULL THEN 1 ELSE 0 END')
+                                    ->orderBy('sort_order')
+                                    ->orderBy('grade')
+                                    ->get()
+                                    ->mapWithKeys(fn (GradeValue $gradeValue) => [
+                                        $gradeValue->id => $gradeValue->label
+                                            ? "{$gradeValue->grade} — {$gradeValue->label}"
+                                            : $gradeValue->grade,
+                                    ])
+                                    ->all();
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->required(fn (Get $get): bool => filled($get('grade_scale_id'))),
                         TextInput::make('final_grade')
                             ->label('Final grade')
-                            ->required()
+                            ->helperText('Use manual final grade only when no grade scale/value is selected.')
+                            ->required(fn (Get $get): bool => blank($get('grade_scale_id')) && blank($get('grade_value_id')))
+                            ->visible(fn (Get $get): bool => blank($get('grade_scale_id')) && blank($get('grade_value_id')))
                             ->maxLength(20),
                         TextInput::make('credits_attempted')
                             ->numeric()
@@ -129,10 +173,52 @@ class CourseEnrollmentsTable
                             return;
                         }
 
+                        $selectedGradeValue = null;
+
+                        if (filled($data['grade_value_id'] ?? null)) {
+                            $selectedGradeValue = GradeValue::query()
+                                ->where('institution_id', $record->institution_id)
+                                ->where('grade_scale_id', $data['grade_scale_id'] ?? null)
+                                ->find($data['grade_value_id']);
+
+                            if (! $selectedGradeValue) {
+                                Notification::make()
+                                    ->title('Selected grade value is invalid')
+                                    ->body('The chosen grade value does not belong to the selected active grade scale for this institution.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+                        }
+
+                        $finalGrade = $selectedGradeValue?->grade ?? ($data['final_grade'] ?? null);
+
+                        if (blank($finalGrade)) {
+                            Notification::make()
+                                ->title('Final grade is required')
+                                ->body('Select a grade value or enter a manual final grade to complete the enrollment.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
                         DB::transaction(function () use ($record, $data): void {
+                            $selectedGradeValue = null;
+
+                            if (filled($data['grade_value_id'] ?? null)) {
+                                $selectedGradeValue = GradeValue::query()
+                                    ->where('institution_id', $record->institution_id)
+                                    ->where('grade_scale_id', $data['grade_scale_id'] ?? null)
+                                    ->find($data['grade_value_id']);
+                            }
+
+                            $finalGrade = $selectedGradeValue?->grade ?? ($data['final_grade'] ?? null);
+
                             $record->forceFill([
                                 'status' => 'completed',
-                                'final_grade' => $data['final_grade'],
+                                'final_grade' => $finalGrade,
                                 'completed_at' => $data['completed_at'],
                             ])->save();
 
@@ -146,8 +232,14 @@ class CourseEnrollmentsTable
                                 'course_title' => $record->course->title,
                                 'credits_attempted' => $data['credits_attempted'],
                                 'credits_earned' => $data['credits_earned'],
-                                'final_grade' => $data['final_grade'],
-                                'grade_points' => $data['grade_points'] ?: null,
+                                'final_grade' => $finalGrade,
+                                'grade_points' => $selectedGradeValue?->grade_points ?? ($data['grade_points'] ?: null),
+                                'grade_scale_id' => $data['grade_scale_id'] ?: null,
+                                'grade_value_id' => $selectedGradeValue?->id,
+                                'grade_label' => $selectedGradeValue?->label,
+                                'earns_credit' => $selectedGradeValue?->earns_credit,
+                                'affects_gpa' => $selectedGradeValue?->affects_gpa,
+                                'is_passing' => $selectedGradeValue?->is_passing,
                                 'status' => 'completed',
                                 'completed_at' => $data['completed_at'],
                                 'notes' => $data['notes'] ?: null,

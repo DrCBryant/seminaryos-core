@@ -199,6 +199,7 @@ class OfficialTranscriptsTable
                                             'credits_attempted' => $academicRecord->credits_attempted,
                                             'credits_earned' => $academicRecord->credits_earned,
                                             'final_grade' => $academicRecord->final_grade,
+                                            'grade_label' => $academicRecord->grade_label,
                                             'grade_points' => $academicRecord->grade_points,
                                             'status' => $academicRecord->status,
                                             'completed_at' => $academicRecord->completed_at,

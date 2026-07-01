@@ -5,12 +5,16 @@ namespace App\Filament\Resources\AcademicRecords\Schemas;
 use App\Models\AcademicTerm;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\GradeScale;
+use App\Models\GradeValue;
 use App\Models\Institution;
 use App\Models\Student;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Get;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -85,6 +89,56 @@ class AcademicRecordForm
                                 TextInput::make('grade_points')
                                     ->numeric()
                                     ->inputMode('decimal'),
+                                Select::make('grade_scale_id')
+                                    ->label('Grade scale')
+                                    ->options(function (Get $get): array {
+                                        $institutionId = $get('institution_id');
+
+                                        if (blank($institutionId)) {
+                                            return [];
+                                        }
+
+                                        return GradeScale::query()
+                                            ->where('institution_id', $institutionId)
+                                            ->where('is_active', true)
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id')
+                                            ->all();
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->live(),
+                                Select::make('grade_value_id')
+                                    ->label('Grade value')
+                                    ->options(function (Get $get): array {
+                                        $institutionId = $get('institution_id');
+                                        $gradeScaleId = $get('grade_scale_id');
+
+                                        if (blank($institutionId) || blank($gradeScaleId)) {
+                                            return [];
+                                        }
+
+                                        return GradeValue::query()
+                                            ->where('institution_id', $institutionId)
+                                            ->where('grade_scale_id', $gradeScaleId)
+                                            ->orderByRaw('CASE WHEN sort_order IS NULL THEN 1 ELSE 0 END')
+                                            ->orderBy('sort_order')
+                                            ->orderBy('grade')
+                                            ->get()
+                                            ->mapWithKeys(fn (GradeValue $gradeValue) => [
+                                                $gradeValue->id => $gradeValue->label
+                                                    ? "{$gradeValue->grade} — {$gradeValue->label}"
+                                                    : $gradeValue->grade,
+                                            ])
+                                            ->all();
+                                    })
+                                    ->searchable()
+                                    ->preload(),
+                                TextInput::make('grade_label')
+                                    ->maxLength(255),
+                                Toggle::make('earns_credit'),
+                                Toggle::make('affects_gpa'),
+                                Toggle::make('is_passing'),
                                 Select::make('status')
                                     ->options(self::STATUS_OPTIONS)
                                     ->default('in_progress')

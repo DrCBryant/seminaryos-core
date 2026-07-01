@@ -25,6 +25,12 @@ class AcademicRecord extends BaseModel
         'credits_earned',
         'final_grade',
         'grade_points',
+        'grade_scale_id',
+        'grade_value_id',
+        'grade_label',
+        'earns_credit',
+        'affects_gpa',
+        'is_passing',
         'status',
         'completed_at',
         'notes',
@@ -34,6 +40,9 @@ class AcademicRecord extends BaseModel
         'credits_attempted' => 'decimal:2',
         'credits_earned' => 'decimal:2',
         'grade_points' => 'decimal:2',
+        'earns_credit' => 'boolean',
+        'affects_gpa' => 'boolean',
+        'is_passing' => 'boolean',
         'completed_at' => 'date',
     ];
 
@@ -55,6 +64,16 @@ class AcademicRecord extends BaseModel
     public function academicTerm(): BelongsTo
     {
         return $this->belongsTo(AcademicTerm::class);
+    }
+
+    public function gradeScale(): BelongsTo
+    {
+        return $this->belongsTo(GradeScale::class);
+    }
+
+    public function gradeValue(): BelongsTo
+    {
+        return $this->belongsTo(GradeValue::class);
     }
 
     public function courseEnrollment(): BelongsTo

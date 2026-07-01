@@ -25,6 +25,7 @@ class OfficialTranscriptLine extends BaseModel
         'credits_attempted',
         'credits_earned',
         'final_grade',
+        'grade_label',
         'grade_points',
         'status',
         'completed_at',

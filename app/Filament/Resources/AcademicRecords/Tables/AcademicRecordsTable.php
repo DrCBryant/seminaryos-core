@@ -10,6 +10,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -40,10 +41,27 @@ class AcademicRecordsTable
                 TextColumn::make('final_grade')
                     ->label('Final grade')
                     ->sortable(),
+                TextColumn::make('grade_label')
+                    ->label('Grade label')
+                    ->toggleable(),
+                TextColumn::make('grade_points')
+                    ->label('Grade points')
+                    ->numeric(decimalPlaces: 2)
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('credits_earned')
                     ->label('Credits earned')
                     ->numeric(decimalPlaces: 2)
                     ->sortable(),
+                IconColumn::make('earns_credit')
+                    ->label('Earns credit')
+                    ->boolean(),
+                IconColumn::make('affects_gpa')
+                    ->label('Affects GPA')
+                    ->boolean(),
+                IconColumn::make('is_passing')
+                    ->label('Passing')
+                    ->boolean(),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => AcademicRecordForm::STATUS_OPTIONS[$state] ?? $state)
@@ -85,6 +103,24 @@ class AcademicRecordsTable
                         'P' => 'P',
                         'W' => 'W',
                         'I' => 'I',
+                    ]),
+                SelectFilter::make('affects_gpa')
+                    ->label('Affects GPA')
+                    ->options([
+                        '1' => 'Yes',
+                        '0' => 'No',
+                    ]),
+                SelectFilter::make('earns_credit')
+                    ->label('Earns credit')
+                    ->options([
+                        '1' => 'Yes',
+                        '0' => 'No',
+                    ]),
+                SelectFilter::make('is_passing')
+                    ->label('Passing')
+                    ->options([
+                        '1' => 'Yes',
+                        '0' => 'No',
                     ]),
                 TrashedFilter::make(),
             ])
