@@ -9,6 +9,12 @@ use Illuminate\Support\Collection;
 
 class GpaPreview
 {
+    protected const INCOMPLETE_GPA_REASON_MISSING_CREDITS = 'Credits attempted are missing';
+
+    protected const INCOMPLETE_GPA_REASON_ZERO_CREDITS = 'Credits attempted must be greater than zero';
+
+    protected const INCOMPLETE_GPA_REASON_MISSING_GRADE_POINTS = 'Grade points are missing';
+
     public static function make(): Action
     {
         return Action::make('viewGpaPreview')
@@ -44,7 +50,17 @@ class GpaPreview
             ->values();
 
         $includedRecords = $records
-            ->filter(fn (AcademicRecord $record): bool => $record->affects_gpa === true)
+            ->filter(fn (AcademicRecord $record): bool => self::isCompleteGpaBearingRecord($record))
+            ->values();
+
+        $incompleteGpaRecords = $records
+            ->filter(fn (AcademicRecord $record): bool => $record->affects_gpa === true && ! self::isCompleteGpaBearingRecord($record))
+            ->map(function (AcademicRecord $record): array {
+                return [
+                    'record' => $record,
+                    'reason' => self::getIncompleteGpaReason($record),
+                ];
+            })
             ->values();
 
         $excludedRecords = $records
@@ -95,11 +111,43 @@ class GpaPreview
             'student' => $student,
             'termGroups' => $termGroups,
             'otherIncludedRecords' => $otherIncludedRecords,
+            'incompleteGpaRecords' => $incompleteGpaRecords,
             'excludedRecords' => $excludedRecords,
             'totalGpaCredits' => $totalGpaCredits,
             'totalQualityPoints' => $totalQualityPoints,
             'overallGpa' => $totalGpaCredits > 0 ? $totalQualityPoints / $totalGpaCredits : null,
+            'hasIncompleteGpaRecords' => $incompleteGpaRecords->isNotEmpty(),
         ];
+    }
+
+    protected static function isCompleteGpaBearingRecord(AcademicRecord $record): bool
+    {
+        if ($record->affects_gpa !== true) {
+            return false;
+        }
+
+        if ($record->credits_attempted === null || (float) $record->credits_attempted <= 0) {
+            return false;
+        }
+
+        return $record->grade_points !== null;
+    }
+
+    protected static function getIncompleteGpaReason(AcademicRecord $record): string
+    {
+        $reasons = [];
+
+        if ($record->credits_attempted === null) {
+            $reasons[] = self::INCOMPLETE_GPA_REASON_MISSING_CREDITS;
+        } elseif ((float) $record->credits_attempted <= 0) {
+            $reasons[] = self::INCOMPLETE_GPA_REASON_ZERO_CREDITS;
+        }
+
+        if ($record->grade_points === null) {
+            $reasons[] = self::INCOMPLETE_GPA_REASON_MISSING_GRADE_POINTS;
+        }
+
+        return implode('; ', $reasons);
     }
 
     protected static function calculateQualityPoints(AcademicRecord $record): float

@@ -46,6 +46,13 @@
         </div>
     </div>
 
+    @if ($hasIncompleteGpaRecords)
+        <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+            <p class="font-semibold">Warning: Incomplete GPA-bearing records were excluded from GPA calculations.</p>
+            <p class="mt-1">Overall and term GPA totals only include records with GPA metadata that has credits attempted greater than zero and non-null grade points.</p>
+        </div>
+    @endif
+
     @forelse ($termGroups as $group)
         <div class="space-y-3">
             <div class="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900 md:flex-row md:items-end md:justify-between">
@@ -144,6 +151,50 @@
             </div>
         </div>
     @endif
+
+    <div class="space-y-3">
+        <h3 class="text-lg font-semibold text-gray-950 dark:text-white">Incomplete GPA Data</h3>
+
+        @if ($incompleteGpaRecords->isEmpty())
+            <div class="rounded-xl border border-dashed border-gray-300 p-6 text-sm text-gray-500 dark:border-white/10 dark:text-gray-400">
+                No incomplete GPA-bearing records were found.
+            </div>
+        @else
+            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10">
+                        <thead class="bg-gray-50 dark:bg-white/5">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Course Code</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Course Title</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Credits Attempted</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Final Grade</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Grade Label</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Grade Points</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+                            @foreach ($incompleteGpaRecords as $entry)
+                                @php($record = $entry['record'])
+                                <tr>
+                                    <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $record->course_code }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $record->course_title }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatCredits($record->credits_attempted) }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $record->final_grade ?? '—' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $record->grade_label ?? '—' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatCredits($record->grade_points) }}</td>
+                                    <td class="px-4 py-3 text-sm capitalize text-gray-700 dark:text-gray-300">{{ $record->status ? str_replace('_', ' ', $record->status) : '—' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $entry['reason'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+    </div>
 
     <div class="space-y-3">
         <h3 class="text-lg font-semibold text-gray-950 dark:text-white">Excluded Records</h3>
