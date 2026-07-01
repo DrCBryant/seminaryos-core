@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Institution extends Model
@@ -102,6 +103,28 @@ class Institution extends Model
     public function officialTranscripts(): HasMany
     {
         return $this->hasMany(OfficialTranscript::class);
+    }
+
+    public function transcriptSettings(): HasMany
+    {
+        return $this->hasMany(TranscriptSetting::class);
+    }
+
+    public function gradeScales(): HasMany
+    {
+        return $this->hasMany(GradeScale::class);
+    }
+
+    public function gradeValues(): HasMany
+    {
+        return $this->hasMany(GradeValue::class);
+    }
+
+    public function activeTranscriptSetting(): HasOne
+    {
+        return $this->hasOne(TranscriptSetting::class)
+            ->where('is_active', true)
+            ->latestOfMany();
     }
 
     public function officialTranscriptLines(): HasMany

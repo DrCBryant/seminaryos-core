@@ -4,11 +4,26 @@ namespace App\Filament\Resources\OfficialTranscripts\Support;
 
 use App\Models\OfficialTranscript;
 use App\Models\OfficialTranscriptLine;
+use App\Models\TranscriptSetting;
 use Filament\Actions\Action;
 use Illuminate\Support\Collection;
 
 class OfficialTranscriptView
 {
+    protected const DEFAULT_SETTINGS = [
+        'transcript_title' => 'Official Transcript',
+        'certification_statement' => 'This official transcript is certified by the registrar as a true and complete academic record as of the issue date shown.',
+        'footer_statement' => 'End of official transcript.',
+        'grading_scale_note' => 'Grade points and GPA calculations are not included unless specifically enabled by institutional transcript settings.',
+        'accreditation_note' => 'Accreditation information is available from the issuing institution upon request.',
+        'transcript_disclaimer' => 'This transcript is intended for official academic use and reflects information available at the time of issue.',
+        'show_recipient_info' => true,
+        'show_delivery_method' => true,
+        'show_purpose' => true,
+        'show_grade_points' => false,
+        'show_status' => true,
+    ];
+
     public static function make(): Action
     {
         return Action::make('viewOfficialTranscript')
@@ -29,10 +44,32 @@ class OfficialTranscriptView
     protected static function getViewData(OfficialTranscript $transcript): array
     {
         $transcript->loadMissing([
-            'institution',
+            'institution.activeTranscriptSetting',
             'student.program',
             'lines',
         ]);
+
+        /** @var TranscriptSetting|null $activeTranscriptSetting */
+        $activeTranscriptSetting = $transcript->institution?->activeTranscriptSetting;
+
+        $transcriptSettings = array_merge(
+            self::DEFAULT_SETTINGS,
+            $activeTranscriptSetting?->only([
+                'transcript_title',
+                'registrar_name',
+                'registrar_title',
+                'certification_statement',
+                'footer_statement',
+                'grading_scale_note',
+                'accreditation_note',
+                'transcript_disclaimer',
+                'show_recipient_info',
+                'show_delivery_method',
+                'show_purpose',
+                'show_grade_points',
+                'show_status',
+            ]) ?? [],
+        );
 
         $lines = $transcript->lines
             ->sortBy([
@@ -77,6 +114,7 @@ class OfficialTranscriptView
         return [
             'transcript' => $transcript,
             'student' => $transcript->student,
+            'transcriptSettings' => $transcriptSettings,
             'termGroups' => $termGroups,
             'otherGroups' => $otherGroups,
             'totalCreditsAttempted' => (float) $lines->sum(fn (OfficialTranscriptLine $line) => (float) ($line->credits_attempted ?? 0)),
