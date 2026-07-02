@@ -11,7 +11,7 @@ class InstitutionScope implements Scope
     public function apply(Builder $builder, Model $model): void
     {
         if (auth()->check() && auth()->user()->currentInstitution) {
-            $builder->where($model->getTable() . '.institution_id', auth()->user()->currentInstitution->id);
+            $builder->where($model->getTable().'.institution_id', auth()->user()->currentInstitution->id);
         }
     }
 }

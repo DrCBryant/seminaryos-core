@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\AcademicTerms\Tables;
 
+use App\Models\AcademicTerm;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -49,7 +50,7 @@ class AcademicTermsTable
             ])
             ->filters([
                 SelectFilter::make('academic_year')
-                    ->options(fn () => \App\Models\AcademicTerm::query()
+                    ->options(fn () => AcademicTerm::query()
                         ->orderByDesc('academic_year')
                         ->pluck('academic_year', 'academic_year')
                         ->all()),
