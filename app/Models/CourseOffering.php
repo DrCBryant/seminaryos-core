@@ -5,11 +5,14 @@ namespace App\Models;
 use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CourseOffering extends BaseModel
 {
     use HasInstitutionScope, HasUuid;
+
+    public const DEFAULT_SECTION_CODE = 'MAIN';
 
     public const DELIVERY_MODE_OPTIONS = [
         'in_person' => 'In Person',
@@ -54,6 +57,20 @@ class CourseOffering extends BaseModel
         'capacity' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $courseOffering): void {
+            $courseOffering->section_code = self::normalizeSectionCode($courseOffering->section_code);
+        });
+    }
+
+    protected function sectionCode(): Attribute
+    {
+        return Attribute::make(
+            set: fn (mixed $value): string => self::normalizeSectionCode($value),
+        );
+    }
+
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
@@ -67,5 +84,12 @@ class CourseOffering extends BaseModel
     public function academicTerm(): BelongsTo
     {
         return $this->belongsTo(AcademicTerm::class);
+    }
+
+    protected static function normalizeSectionCode(mixed $value): string
+    {
+        $normalized = strtoupper(trim((string) ($value ?? '')));
+
+        return $normalized !== '' ? $normalized : self::DEFAULT_SECTION_CODE;
     }
 }

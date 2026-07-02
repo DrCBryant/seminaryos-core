@@ -47,6 +47,12 @@ class CourseOfferingForm
                                     ->required(),
                                 TextInput::make('section_code')
                                     ->label('Section code')
+                                    ->default(CourseOffering::DEFAULT_SECTION_CODE)
+                                    ->helperText('Use MAIN for the primary/default section, or A, B, INTENSIVE, ONLINE, etc.')
+                                    ->required()
+                                    ->dehydrateStateUsing(fn (?string $state): string => CourseOffering::DEFAULT_SECTION_CODE !== ''
+                                        ? strtoupper(trim($state ?: CourseOffering::DEFAULT_SECTION_CODE))
+                                        : strtoupper(trim((string) $state)))
                                     ->maxLength(255),
                                 TextInput::make('title')
                                     ->maxLength(255),
