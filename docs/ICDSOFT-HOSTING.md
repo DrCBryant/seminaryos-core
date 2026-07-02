@@ -87,6 +87,10 @@ Standard ICDSoft-friendly deployment flow should include:
 - `php artisan route:cache` only if all routes support caching
 - `php artisan view:cache`
 
+### Course Offering Section-Code Hardening Preflight
+
+Before deploying the course offering section-code hardening migration to production data, check for duplicate course offerings within the same institution, course, and academic term where `section_code` is blank or `NULL`. Those values normalize to `MAIN`, so duplicates can conflict with the course offering section uniqueness rule. If there is no existing course offering data, this preflight is not blocking.
+
 ### Writable Directories
 
 Ensure these directories are writable by the hosting environment:

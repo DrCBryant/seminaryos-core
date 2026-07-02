@@ -7,7 +7,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -28,10 +27,6 @@ class WebsitesTable
                     ->sortable(),
                 TextColumn::make('domain')
                     ->searchable()
-                    ->toggleable(),
-                IconColumn::make('is_public')
-                    ->label('Public')
-                    ->boolean(false)
                     ->toggleable(),
                 TextColumn::make('status')
                     ->badge()

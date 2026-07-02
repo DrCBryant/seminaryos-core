@@ -8,9 +8,11 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Get;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\Rules\Unique;
 
 class FacultyForm
 {
@@ -49,7 +51,10 @@ class FacultyForm
                                     ->email()
                                     ->required()
                                     ->maxLength(255)
-                                    ->unique(ignoreRecord: true),
+                                    ->unique(
+                                        ignoreRecord: true,
+                                        modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule->where('institution_id', $get('institution_id')),
+                                    ),
                                 TextInput::make('phone')
                                     ->tel()
                                     ->maxLength(50),
