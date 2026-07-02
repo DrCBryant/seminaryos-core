@@ -4,12 +4,14 @@ namespace App\Filament\Resources\CourseEnrollments\Schemas;
 
 use App\Models\AcademicTerm;
 use App\Models\Course;
+use App\Models\CourseOffering;
 use App\Models\Institution;
 use App\Models\Student;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Set;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -38,20 +40,44 @@ class CourseEnrollmentForm
                                     ->searchable()
                                     ->preload()
                                     ->required(),
+                                Select::make('course_offering_id')
+                                    ->label('Course offering')
+                                    ->relationship('courseOffering', 'section_code', fn ($query) => $query->orderByDesc('academic_term_id')->orderBy('section_code'))
+                                    ->getOptionLabelFromRecordUsing(fn (CourseOffering $record): string => trim("{$record->course?->code} — {$record->academicTerm?->name} — {$record->section_code}"))
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (?string $state, Set $set): void {
+                                        if (blank($state)) {
+                                            return;
+                                        }
+
+                                        $offering = CourseOffering::query()->find($state);
+
+                                        if (! $offering) {
+                                            return;
+                                        }
+
+                                        $set('institution_id', $offering->institution_id);
+                                        $set('course_id', $offering->course_id);
+                                        $set('academic_term_id', $offering->academic_term_id);
+                                    }),
                                 Select::make('course_id')
                                     ->label('Course')
                                     ->relationship('course', 'title', fn ($query) => $query->orderBy('title'))
                                     ->getOptionLabelFromRecordUsing(fn (Course $record): string => "{$record->code} — {$record->title}")
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+                                    ->required()
+                                    ->helperText('Used for legacy/manual enrollments when no course offering is selected.'),
                                 Select::make('academic_term_id')
                                     ->label('Academic term')
                                     ->relationship('academicTerm', 'name', fn ($query) => $query->orderByDesc('academic_year')->orderBy('start_date'))
                                     ->getOptionLabelFromRecordUsing(fn (AcademicTerm $record): string => "{$record->name} ({$record->academic_year})")
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+                                    ->required()
+                                    ->helperText('Used for legacy/manual enrollments when no course offering is selected.'),
                                 Select::make('status')
                                     ->options([
                                         'enrolled' => 'Enrolled',

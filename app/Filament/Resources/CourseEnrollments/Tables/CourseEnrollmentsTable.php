@@ -43,6 +43,12 @@ class CourseEnrollmentsTable
                     ->label('Course')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('courseOffering.section_code')
+                    ->label('Course offering')
+                    ->formatStateUsing(fn (?string $state, CourseEnrollment $record): string => $record->courseOffering
+                        ? trim("{$record->courseOffering->section_code} — {$record->courseOffering->academicTerm?->name}")
+                        : '—')
+                    ->toggleable(),
                 TextColumn::make('academicTerm.name')
                     ->label('Term')
                     ->searchable()

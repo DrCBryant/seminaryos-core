@@ -19,6 +19,7 @@ class CourseEnrollment extends BaseModel
         'student_id',
         'course_id',
         'academic_term_id',
+        'course_offering_id',
         'status',
         'enrolled_at',
         'completed_at',
@@ -49,6 +50,11 @@ class CourseEnrollment extends BaseModel
     public function academicTerm(): BelongsTo
     {
         return $this->belongsTo(AcademicTerm::class);
+    }
+
+    public function courseOffering(): BelongsTo
+    {
+        return $this->belongsTo(CourseOffering::class);
     }
 
     public function academicRecord(): HasOne

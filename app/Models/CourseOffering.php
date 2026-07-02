@@ -7,6 +7,7 @@ use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CourseOffering extends BaseModel
 {
@@ -84,6 +85,11 @@ class CourseOffering extends BaseModel
     public function academicTerm(): BelongsTo
     {
         return $this->belongsTo(AcademicTerm::class);
+    }
+
+    public function courseEnrollments(): HasMany
+    {
+        return $this->hasMany(CourseEnrollment::class);
     }
 
     protected static function normalizeSectionCode(mixed $value): string
