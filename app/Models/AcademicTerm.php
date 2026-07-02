@@ -53,4 +53,9 @@ class AcademicTerm extends BaseModel
     {
         return $this->hasMany(AcademicRecord::class);
     }
+
+    public function courseOfferings(): HasMany
+    {
+        return $this->hasMany(CourseOffering::class);
+    }
 }
