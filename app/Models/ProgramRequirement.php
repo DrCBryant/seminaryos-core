@@ -6,6 +6,7 @@ use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProgramRequirement extends BaseModel
@@ -69,5 +70,10 @@ class ProgramRequirement extends BaseModel
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function studentRequirementEvidence(): HasMany
+    {
+        return $this->hasMany(StudentRequirementEvidence::class);
     }
 }

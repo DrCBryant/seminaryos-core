@@ -76,4 +76,9 @@ class Program extends BaseModel
     {
         return $this->hasMany(ProgramRequirement::class)->orderBy('sort_order');
     }
+
+    public function studentRequirementEvidence()
+    {
+        return $this->hasMany(StudentRequirementEvidence::class);
+    }
 }

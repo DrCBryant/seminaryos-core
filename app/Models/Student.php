@@ -74,4 +74,9 @@ class Student extends BaseModel
     {
         return $this->hasMany(OfficialTranscriptLine::class);
     }
+
+    public function studentRequirementEvidence(): HasMany
+    {
+        return $this->hasMany(StudentRequirementEvidence::class);
+    }
 }

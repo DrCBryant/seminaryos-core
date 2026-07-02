@@ -6,6 +6,7 @@ use App\Models\AcademicRecord;
 use App\Models\ProgramRequirement;
 use App\Models\ProgramRequirementGroup;
 use App\Models\Student;
+use App\Models\StudentRequirementEvidence;
 use Filament\Actions\Action;
 use Illuminate\Support\Collection;
 
@@ -31,6 +32,17 @@ class DegreeAuditPreview
         'field_education',
     ];
 
+    /**
+     * @var array<int, string>
+     */
+    protected const MANUAL_EVIDENCE_REQUIREMENT_TYPES = [
+        'non_course_requirement',
+        'practicum',
+        'capstone',
+        'field_education',
+        'custom',
+    ];
+
     public static function make(): Action
     {
         return Action::make('viewDegreeAudit')
@@ -53,6 +65,7 @@ class DegreeAuditPreview
             'institution',
             'program.programRequirementGroups.programRequirements.course',
             'academicRecords.course',
+            'studentRequirementEvidence.programRequirement',
         ]);
 
         $records = $student->academicRecords
@@ -62,6 +75,10 @@ class DegreeAuditPreview
                 fn (AcademicRecord $record) => $record->course_title,
             ])
             ->values();
+
+        $evidenceByRequirementId = $student->studentRequirementEvidence
+            ->filter(fn (StudentRequirementEvidence $evidence): bool => $evidence->program_requirement_id !== null)
+            ->keyBy('program_requirement_id');
 
         $groups = $student->program?->programRequirementGroups
             ?->where('is_active', true)
@@ -92,7 +109,7 @@ class DegreeAuditPreview
                 ->values();
 
             foreach ($requirements as $requirement) {
-                $result = self::evaluateRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId);
+                $result = self::evaluateRequirement($requirement, $records, $evidenceByRequirementId, $usedRecordIds, $remainingCreditsByRecordId);
 
                 $groupRequirementResults->push($result);
                 $requirementResults->push($result);
@@ -132,18 +149,19 @@ class DegreeAuditPreview
     protected static function evaluateRequirement(
         ProgramRequirement $requirement,
         Collection $records,
+        Collection $evidenceByRequirementId,
         array &$usedRecordIds,
         array &$remainingCreditsByRecordId,
     ): array {
-        if (in_array($requirement->requirement_type, self::COURSE_MATCH_REQUIREMENT_TYPES, true)) {
+        if ($requirement->course_id !== null && in_array($requirement->requirement_type, self::COURSE_MATCH_REQUIREMENT_TYPES, true)) {
             return self::evaluateCourseRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId);
         }
 
         return match ($requirement->requirement_type) {
             'elective_credits' => self::evaluateElectiveCreditsRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId),
             'transfer_credits' => self::evaluateTransferCreditsRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId),
-            'non_course_requirement', 'custom' => self::evaluateManualRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId),
-            default => self::evaluateManualRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId),
+            'non_course_requirement', 'practicum', 'capstone', 'field_education', 'custom' => self::evaluateManualRequirement($requirement, $records, $evidenceByRequirementId, $usedRecordIds, $remainingCreditsByRecordId),
+            default => self::evaluateManualRequirement($requirement, $records, $evidenceByRequirementId, $usedRecordIds, $remainingCreditsByRecordId),
         };
     }
 
@@ -273,6 +291,7 @@ class DegreeAuditPreview
     protected static function evaluateManualRequirement(
         ProgramRequirement $requirement,
         Collection $records,
+        Collection $evidenceByRequirementId,
         array &$usedRecordIds,
         array &$remainingCreditsByRecordId,
     ): array {
@@ -280,11 +299,52 @@ class DegreeAuditPreview
             return self::evaluateCourseRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId);
         }
 
-        return self::baseRequirementResult(
-            $requirement,
-            'not_evaluated',
-            'Manual evidence tracking is not built yet for this requirement type.',
-        );
+        if (! in_array($requirement->requirement_type, self::MANUAL_EVIDENCE_REQUIREMENT_TYPES, true)) {
+            return self::baseRequirementResult(
+                $requirement,
+                'not_evaluated',
+                'This requirement type is not configured for manual evidence evaluation.',
+            );
+        }
+
+        /** @var StudentRequirementEvidence|null $evidence */
+        $evidence = $evidenceByRequirementId->get($requirement->id);
+
+        if ($evidence === null) {
+            return self::baseRequirementResult(
+                $requirement,
+                'incomplete',
+                'No approved, waived, pending, or submitted evidence exists for this requirement.',
+            );
+        }
+
+        return match ($evidence->status) {
+            'approved', 'waived' => self::baseRequirementResult(
+                $requirement,
+                'complete',
+                $evidence->status === 'waived'
+                    ? 'Requirement satisfied by waived evidence.'
+                    : 'Requirement satisfied by approved evidence.',
+            ),
+            'pending', 'submitted' => self::baseRequirementResult(
+                $requirement,
+                'in_progress',
+                'Requirement evidence has been recorded and is awaiting final approval.',
+            ),
+            'rejected', 'archived' => self::baseRequirementResult(
+                $requirement,
+                'incomplete',
+                $evidence->status === 'archived'
+                    ? 'Requirement evidence exists but is archived and does not satisfy the requirement.'
+                    : 'Requirement evidence was rejected and does not satisfy the requirement.',
+            ),
+            default => self::baseRequirementResult(
+                $requirement,
+                'incomplete',
+                'Requirement evidence does not currently satisfy the requirement.',
+            ),
+        };
+
     }
 
     /**
