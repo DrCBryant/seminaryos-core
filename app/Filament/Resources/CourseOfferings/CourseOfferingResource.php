@@ -5,6 +5,8 @@ namespace App\Filament\Resources\CourseOfferings;
 use App\Filament\Resources\CourseOfferings\Pages\CreateCourseOffering;
 use App\Filament\Resources\CourseOfferings\Pages\EditCourseOffering;
 use App\Filament\Resources\CourseOfferings\Pages\ListCourseOfferings;
+use App\Filament\Resources\CourseOfferings\RelationManagers\CourseEnrollmentsRelationManager;
+use App\Filament\Resources\CourseOfferings\RelationManagers\TeachingAssignmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\Schemas\CourseOfferingForm;
 use App\Filament\Resources\CourseOfferings\Tables\CourseOfferingsTable;
 use App\Models\CourseOffering;
@@ -44,7 +46,10 @@ class CourseOfferingResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            CourseEnrollmentsRelationManager::class,
+            TeachingAssignmentsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
