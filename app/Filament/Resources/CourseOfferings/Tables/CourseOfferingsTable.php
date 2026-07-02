@@ -31,6 +31,31 @@ class CourseOfferingsTable
                     ->label('Section code')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('capacity')
+                    ->label('Capacity')
+                    ->formatStateUsing(fn (?int $state): string => $state === null ? 'Unlimited' : (string) $state)
+                    ->sortable(),
+                TextColumn::make('enrolled_count')
+                    ->label('Enrolled')
+                    ->state(fn (CourseOffering $record): int => $record->enrolled_count ?? $record->enrolledCount())
+                    ->sortable(),
+                TextColumn::make('available_seats')
+                    ->label('Available seats')
+                    ->state(fn (CourseOffering $record): string|int => $record->capacity === null
+                        ? 'Unlimited'
+                        : max(($record->capacity ?? 0) - ($record->enrolled_count ?? $record->enrolledCount()), 0))
+                    ->badge()
+                    ->color(fn (CourseOffering $record): string => $record->capacityStatus() === CourseOffering::CAPACITY_STATUS_FULL ? 'danger' : 'gray'),
+                TextColumn::make('capacity_status')
+                    ->label('Capacity status')
+                    ->state(fn (CourseOffering $record): string => $record->capacityStatus())
+                    ->badge()
+                    ->color(fn (CourseOffering $record): string => match ($record->capacityStatus()) {
+                        CourseOffering::CAPACITY_STATUS_FULL => 'danger',
+                        CourseOffering::CAPACITY_STATUS_NEARLY_FULL => 'warning',
+                        default => 'success',
+                    })
+                    ->sortable(query: fn ($query, string $direction) => $query->orderBy('enrolled_count', $direction)),
                 TextColumn::make('courseEnrollments_count')
                     ->label('Enrollments')
                     ->counts('courseEnrollments')
@@ -43,14 +68,12 @@ class CourseOfferingsTable
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => CourseOffering::DELIVERY_MODE_OPTIONS[$state] ?? $state)
                     ->sortable(),
-                TextColumn::make('capacity')
-                    ->numeric()
-                    ->sortable(),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => CourseOffering::STATUS_OPTIONS[$state] ?? $state)
                     ->sortable(),
             ])
+            ->modifyQueryUsing(fn ($query) => $query->withCapacityAwareness())
             ->filters([
                 SelectFilter::make('academic_term_id')
                     ->label('Academic term')

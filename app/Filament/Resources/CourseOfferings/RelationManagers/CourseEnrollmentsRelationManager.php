@@ -13,6 +13,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -67,6 +68,25 @@ class CourseEnrollmentsRelationManager extends RelationManager
                         return $data;
                     })
                     ->form([
+                        Placeholder::make('capacity_warning')
+                            ->label('Capacity status')
+                            ->content(function (): string {
+                                /** @var CourseOffering $ownerRecord */
+                                $ownerRecord = $this->getOwnerRecord();
+
+                                if ($ownerRecord->capacity === null) {
+                                    return 'This offering has unlimited capacity. Enrollment is not blocked.';
+                                }
+
+                                $summary = "Enrolled {$ownerRecord->enrolledCount()} of {$ownerRecord->capacity}. Available seats: {$ownerRecord->availableSeats()}. Status: {$ownerRecord->capacityStatus()}.";
+
+                                if ($ownerRecord->isAtCapacity()) {
+                                    return $summary.' This offering is currently full, but over-capacity enrollment is still allowed.';
+                                }
+
+                                return $summary.' Enrollment is not blocked.';
+                            })
+                            ->columnSpanFull(),
                         Hidden::make('institution_id')
                             ->default(fn (): ?int => $this->getOwnerRecord()->institution_id),
                         Hidden::make('course_offering_id')

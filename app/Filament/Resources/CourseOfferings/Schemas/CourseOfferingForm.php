@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Institution;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -22,6 +23,21 @@ class CourseOfferingForm
             ->components([
                 Section::make('Course Offering Details')
                     ->schema([
+                        Placeholder::make('capacity_summary')
+                            ->label('Capacity summary')
+                            ->content(function (?CourseOffering $record): string {
+                                if (! $record) {
+                                    return 'Capacity summary will appear after this course offering is created.';
+                                }
+
+                                $capacity = $record->capacity === null ? 'Unlimited' : (string) $record->capacity;
+                                $enrolled = $record->enrolledCount();
+                                $availableSeats = $record->availableSeats();
+                                $status = $record->capacityStatus();
+
+                                return "Capacity: {$capacity} | Enrolled: {$enrolled} | Available seats: {$availableSeats} | Status: {$status}";
+                            })
+                            ->hidden(fn (?CourseOffering $record): bool => $record === null),
                         Grid::make(2)
                             ->schema([
                                 Select::make('institution_id')
