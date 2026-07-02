@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Students;
 use App\Filament\Resources\Students\Pages\CreateStudent;
 use App\Filament\Resources\Students\Pages\EditStudent;
 use App\Filament\Resources\Students\Pages\ListStudents;
+use App\Filament\Resources\Students\RelationManagers\ProgramRequirementSubstitutionsRelationManager;
 use App\Filament\Resources\Students\RelationManagers\StudentRequirementEvidenceRelationManager;
 use App\Filament\Resources\Students\Schemas\StudentForm;
 use App\Filament\Resources\Students\Tables\StudentsTable;
@@ -41,6 +42,7 @@ class StudentResource extends Resource
     {
         return [
             StudentRequirementEvidenceRelationManager::class,
+            ProgramRequirementSubstitutionsRelationManager::class,
         ];
     }
 

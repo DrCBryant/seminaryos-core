@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Students\Support;
 use App\Models\AcademicRecord;
 use App\Models\ProgramRequirement;
 use App\Models\ProgramRequirementGroup;
+use App\Models\ProgramRequirementSubstitution;
 use App\Models\Student;
 use App\Models\StudentRequirementEvidence;
 use Filament\Actions\Action;
@@ -66,6 +67,8 @@ class DegreeAuditPreview
             'program.programRequirementGroups.programRequirements.course',
             'academicRecords.course',
             'studentRequirementEvidence.programRequirement',
+            'programRequirementSubstitutions.substituteCourse',
+            'programRequirementSubstitutions.academicRecord.course',
         ]);
 
         $records = $student->academicRecords
@@ -79,6 +82,10 @@ class DegreeAuditPreview
         $evidenceByRequirementId = $student->studentRequirementEvidence
             ->filter(fn (StudentRequirementEvidence $evidence): bool => $evidence->program_requirement_id !== null)
             ->keyBy('program_requirement_id');
+
+        $substitutionsByRequirementId = $student->programRequirementSubstitutions
+            ->filter(fn (ProgramRequirementSubstitution $substitution): bool => $substitution->program_requirement_id !== null)
+            ->groupBy('program_requirement_id');
 
         $groups = $student->program?->programRequirementGroups
             ?->where('is_active', true)
@@ -109,7 +116,7 @@ class DegreeAuditPreview
                 ->values();
 
             foreach ($requirements as $requirement) {
-                $result = self::evaluateRequirement($requirement, $records, $evidenceByRequirementId, $usedRecordIds, $remainingCreditsByRecordId);
+                $result = self::evaluateRequirement($requirement, $records, $evidenceByRequirementId, $substitutionsByRequirementId, $usedRecordIds, $remainingCreditsByRecordId);
 
                 $groupRequirementResults->push($result);
                 $requirementResults->push($result);
@@ -150,19 +157,44 @@ class DegreeAuditPreview
         ProgramRequirement $requirement,
         Collection $records,
         Collection $evidenceByRequirementId,
+        Collection $substitutionsByRequirementId,
         array &$usedRecordIds,
         array &$remainingCreditsByRecordId,
     ): array {
-        if ($requirement->course_id !== null && in_array($requirement->requirement_type, self::COURSE_MATCH_REQUIREMENT_TYPES, true)) {
-            return self::evaluateCourseRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId);
+        $substitutionResult = self::evaluateRequirementSubstitution(
+            $requirement,
+            $records,
+            $substitutionsByRequirementId,
+            $usedRecordIds,
+            $remainingCreditsByRecordId,
+        );
+
+        if (($substitutionResult['status'] ?? null) === 'complete') {
+            return $substitutionResult;
         }
 
-        return match ($requirement->requirement_type) {
+        if ($requirement->course_id !== null && in_array($requirement->requirement_type, self::COURSE_MATCH_REQUIREMENT_TYPES, true)) {
+            $courseResult = self::evaluateCourseRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId);
+
+            if ($courseResult['status'] === 'complete') {
+                return $courseResult;
+            }
+
+            return $substitutionResult['status'] !== 'not_evaluated'
+                ? self::preferMoreAdvancedRequirementResult($courseResult, $substitutionResult)
+                : $courseResult;
+        }
+
+        $baseResult = match ($requirement->requirement_type) {
             'elective_credits' => self::evaluateElectiveCreditsRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId),
             'transfer_credits' => self::evaluateTransferCreditsRequirement($requirement, $records, $usedRecordIds, $remainingCreditsByRecordId),
             'non_course_requirement', 'practicum', 'capstone', 'field_education', 'custom' => self::evaluateManualRequirement($requirement, $records, $evidenceByRequirementId, $usedRecordIds, $remainingCreditsByRecordId),
             default => self::evaluateManualRequirement($requirement, $records, $evidenceByRequirementId, $usedRecordIds, $remainingCreditsByRecordId),
         };
+
+        return $substitutionResult['status'] !== 'not_evaluated'
+            ? self::preferMoreAdvancedRequirementResult($baseResult, $substitutionResult)
+            : $baseResult;
     }
 
     /**
@@ -345,6 +377,148 @@ class DegreeAuditPreview
             ),
         };
 
+    }
+
+    /**
+     * @param  array<int, int>  $usedRecordIds
+     * @param  array<int, float>  $remainingCreditsByRecordId
+     * @return array<string, mixed>
+     */
+    protected static function evaluateRequirementSubstitution(
+        ProgramRequirement $requirement,
+        Collection $records,
+        Collection $substitutionsByRequirementId,
+        array &$usedRecordIds,
+        array &$remainingCreditsByRecordId,
+    ): array {
+        /** @var Collection<int, ProgramRequirementSubstitution> $substitutions */
+        $substitutions = $substitutionsByRequirementId->get($requirement->id, collect())
+            ->sortByDesc(fn (ProgramRequirementSubstitution $substitution): int => match ($substitution->status) {
+                'approved' => 4,
+                'pending' => 3,
+                'rejected' => 2,
+                'revoked' => 1,
+                'archived' => 0,
+                default => -1,
+            })
+            ->values();
+
+        if ($substitutions->isEmpty()) {
+            return self::baseRequirementResult(
+                $requirement,
+                'not_evaluated',
+                'No substitutions are recorded for this requirement.',
+            );
+        }
+
+        $approvedSubstitution = $substitutions->first(fn (ProgramRequirementSubstitution $substitution): bool => $substitution->status === 'approved');
+
+        if ($approvedSubstitution instanceof ProgramRequirementSubstitution) {
+            $matchedRecord = self::resolveSubstitutionAcademicRecord($approvedSubstitution, $records);
+
+            if ($matchedRecord !== null) {
+                $usedRecordIds[] = $matchedRecord->id;
+                $usedRecordIds = array_values(array_unique($usedRecordIds));
+                $remainingCreditsByRecordId[$matchedRecord->id] = 0.0;
+
+                return array_merge(
+                    self::baseRequirementResult(
+                        $requirement,
+                        'complete',
+                        'Requirement satisfied by approved substitution.',
+                    ),
+                    [
+                        'earnedCredits' => self::creditsEarned($matchedRecord),
+                        'matchedRecords' => collect([$matchedRecord]),
+                    ],
+                );
+            }
+
+            return self::baseRequirementResult(
+                $requirement,
+                'incomplete',
+                'An approved substitution exists, but no eligible academic record was found for it.',
+            );
+        }
+
+        if ($substitutions->contains(fn (ProgramRequirementSubstitution $substitution): bool => $substitution->status === 'pending')) {
+            return self::baseRequirementResult(
+                $requirement,
+                'in_progress',
+                'A substitution is pending approval for this requirement.',
+            );
+        }
+
+        if ($substitutions->contains(fn (ProgramRequirementSubstitution $substitution): bool => in_array($substitution->status, ['rejected', 'revoked', 'archived'], true))) {
+            return self::baseRequirementResult(
+                $requirement,
+                'incomplete',
+                'Only rejected, revoked, or archived substitutions exist for this requirement.',
+            );
+        }
+
+        return self::baseRequirementResult(
+            $requirement,
+            'not_evaluated',
+            'No substitution state is available for this requirement.',
+        );
+    }
+
+    protected static function resolveSubstitutionAcademicRecord(
+        ProgramRequirementSubstitution $substitution,
+        Collection $records,
+    ): ?AcademicRecord {
+        if ($substitution->academic_record_id !== null) {
+            /** @var AcademicRecord|null $academicRecord */
+            $academicRecord = $records->first(fn (AcademicRecord $record): bool => (int) $record->id === (int) $substitution->academic_record_id);
+
+            if ($academicRecord !== null && self::recordEligibleForSubstitution($academicRecord)) {
+                return $academicRecord;
+            }
+        }
+
+        if ($substitution->substitute_course_id !== null) {
+            /** @var AcademicRecord|null $academicRecord */
+            $academicRecord = $records->first(fn (AcademicRecord $record): bool => (int) $record->course_id === (int) $substitution->substitute_course_id && self::recordEligibleForSubstitution($record));
+
+            if ($academicRecord !== null) {
+                return $academicRecord;
+            }
+        }
+
+        return null;
+    }
+
+    protected static function recordEligibleForSubstitution(AcademicRecord $record): bool
+    {
+        if (! in_array((string) $record->status, self::COMPLETED_RECORD_STATUSES, true)) {
+            return false;
+        }
+
+        if ($record->status === 'waived') {
+            return true;
+        }
+
+        return $record->earns_credit === true && $record->is_passing === true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $baseResult
+     * @param  array<string, mixed>  $candidateResult
+     * @return array<string, mixed>
+     */
+    protected static function preferMoreAdvancedRequirementResult(array $baseResult, array $candidateResult): array
+    {
+        $priority = [
+            'complete' => 3,
+            'in_progress' => 2,
+            'incomplete' => 1,
+            'not_evaluated' => 0,
+        ];
+
+        return ($priority[$candidateResult['status']] ?? -1) > ($priority[$baseResult['status']] ?? -1)
+            ? $candidateResult
+            : $baseResult;
     }
 
     /**

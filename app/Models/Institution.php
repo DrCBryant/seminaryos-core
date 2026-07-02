@@ -90,6 +90,11 @@ class Institution extends Model
         return $this->hasMany(StudentRequirementEvidence::class);
     }
 
+    public function programRequirementSubstitutions(): HasMany
+    {
+        return $this->hasMany(ProgramRequirementSubstitution::class);
+    }
+
     public function coursePrograms()
     {
         return $this->hasMany(CourseProgram::class);

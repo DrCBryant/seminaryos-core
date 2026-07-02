@@ -76,4 +76,9 @@ class ProgramRequirement extends BaseModel
     {
         return $this->hasMany(StudentRequirementEvidence::class);
     }
+
+    public function programRequirementSubstitutions(): HasMany
+    {
+        return $this->hasMany(ProgramRequirementSubstitution::class);
+    }
 }
