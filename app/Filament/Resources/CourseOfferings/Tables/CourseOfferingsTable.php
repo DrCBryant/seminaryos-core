@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CourseOfferings\Tables;
 
+use App\Filament\Resources\CourseOfferings\CourseOfferingResource;
 use App\Models\AcademicTerm;
 use App\Models\Course;
 use App\Models\CourseOffering;
@@ -99,6 +100,7 @@ class CourseOfferingsTable
                     ->options(CourseOffering::STATUS_OPTIONS),
             ])
             ->recordActions([
+                CourseOfferingResource::rosterAction(),
                 EditAction::make(),
             ])
             ->toolbarActions([

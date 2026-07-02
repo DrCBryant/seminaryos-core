@@ -5,12 +5,14 @@ namespace App\Filament\Resources\CourseOfferings;
 use App\Filament\Resources\CourseOfferings\Pages\CreateCourseOffering;
 use App\Filament\Resources\CourseOfferings\Pages\EditCourseOffering;
 use App\Filament\Resources\CourseOfferings\Pages\ListCourseOfferings;
+use App\Filament\Resources\CourseOfferings\Pages\ViewCourseOfferingRoster;
 use App\Filament\Resources\CourseOfferings\RelationManagers\CourseEnrollmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\TeachingAssignmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\Schemas\CourseOfferingForm;
 use App\Filament\Resources\CourseOfferings\Tables\CourseOfferingsTable;
 use App\Models\CourseOffering;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -52,12 +54,23 @@ class CourseOfferingResource extends Resource
         ];
     }
 
+    public static function rosterAction(): Action
+    {
+        return Action::make('viewRoster')
+            ->label('View Roster')
+            ->icon(Heroicon::OutlinedPrinter)
+            ->color('gray')
+            ->url(fn (CourseOffering $record): string => static::getUrl('roster', ['record' => $record]))
+            ->openUrlInNewTab();
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ListCourseOfferings::route('/'),
             'create' => CreateCourseOffering::route('/create'),
             'edit' => EditCourseOffering::route('/{record}/edit'),
+            'roster' => ViewCourseOfferingRoster::route('/{record}/roster'),
         ];
     }
 }
