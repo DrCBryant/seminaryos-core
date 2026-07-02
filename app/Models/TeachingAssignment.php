@@ -18,6 +18,7 @@ class TeachingAssignment extends BaseModel
         'faculty_id',
         'course_id',
         'academic_term_id',
+        'course_offering_id',
         'role',
         'status',
         'assigned_at',
@@ -48,5 +49,10 @@ class TeachingAssignment extends BaseModel
     public function academicTerm(): BelongsTo
     {
         return $this->belongsTo(AcademicTerm::class);
+    }
+
+    public function courseOffering(): BelongsTo
+    {
+        return $this->belongsTo(CourseOffering::class);
     }
 }

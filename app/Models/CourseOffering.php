@@ -92,6 +92,11 @@ class CourseOffering extends BaseModel
         return $this->hasMany(CourseEnrollment::class);
     }
 
+    public function teachingAssignments(): HasMany
+    {
+        return $this->hasMany(TeachingAssignment::class);
+    }
+
     protected static function normalizeSectionCode(mixed $value): string
     {
         $normalized = strtoupper(trim((string) ($value ?? '')));
