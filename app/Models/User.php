@@ -53,6 +53,11 @@ class User extends Authenticatable
         return $this->hasMany(ProgramRequirementSubstitution::class, 'approved_by_user_id');
     }
 
+    public function assessedStudentMasterAssessmentAttempts(): HasMany
+    {
+        return $this->hasMany(StudentMasterAssessmentAttempt::class, 'assessor_user_id');
+    }
+
     /**
      * Get the attributes that should be cast.
      *

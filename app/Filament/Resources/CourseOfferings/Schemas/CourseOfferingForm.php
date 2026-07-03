@@ -89,7 +89,18 @@ class CourseOfferingForm
                                     ->options(CourseOffering::STATUS_OPTIONS)
                                     ->default('planned')
                                     ->required(),
+                                Select::make('progress_basis')
+                                    ->label('Progress Basis')
+                                    ->options(CourseOffering::PROGRESS_BASIS_OPTIONS)
+                                    ->default(CourseOffering::PROGRESS_BASIS_ATTENDANCE)
+                                    ->helperText('Determines how section completion will be evaluated. Attendance only governs completion for attendance and hybrid sections.')
+                                    ->required(),
                             ]),
+                        Textarea::make('progress_notes')
+                            ->label('Progress Notes')
+                            ->rows(4)
+                            ->helperText('Use this for section-specific completion guidance, including manual approval expectations or master assessment criteria.')
+                            ->columnSpanFull(),
                         Textarea::make('notes')
                             ->rows(4)
                             ->columnSpanFull(),

@@ -13,6 +13,7 @@ class EditAttendanceSession extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            AttendanceSessionResource::quickMarkAttendanceAction(),
             AttendanceSessionResource::generateRosterRecordsAction(),
             DeleteAction::make(),
         ];

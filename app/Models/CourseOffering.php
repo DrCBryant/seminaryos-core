@@ -14,6 +14,16 @@ class CourseOffering extends BaseModel
 {
     use HasInstitutionScope, HasUuid;
 
+    public const PROGRESS_BASIS_ATTENDANCE = 'attendance';
+
+    public const PROGRESS_BASIS_SUBMISSIONS = 'submissions';
+
+    public const PROGRESS_BASIS_HYBRID = 'hybrid';
+
+    public const PROGRESS_BASIS_MANUAL = 'manual';
+
+    public const PROGRESS_BASIS_MASTER_ASSESSMENT = 'master_assessment';
+
     public const CAPACITY_STATUS_AVAILABLE = 'Available';
 
     public const CAPACITY_STATUS_NEARLY_FULL = 'Nearly Full';
@@ -42,6 +52,14 @@ class CourseOffering extends BaseModel
         'archived' => 'Archived',
     ];
 
+    public const PROGRESS_BASIS_OPTIONS = [
+        self::PROGRESS_BASIS_ATTENDANCE => 'Attendance',
+        self::PROGRESS_BASIS_SUBMISSIONS => 'Submissions',
+        self::PROGRESS_BASIS_HYBRID => 'Hybrid',
+        self::PROGRESS_BASIS_MANUAL => 'Manual Approval',
+        self::PROGRESS_BASIS_MASTER_ASSESSMENT => 'Master Assessment',
+    ];
+
     protected $fillable = [
         'institution_id',
         'uuid',
@@ -56,6 +74,8 @@ class CourseOffering extends BaseModel
         'end_date',
         'capacity',
         'status',
+        'progress_basis',
+        'progress_notes',
         'notes',
     ];
 
@@ -112,6 +132,42 @@ class CourseOffering extends BaseModel
     public function attendanceRecords(): HasMany
     {
         return $this->hasMany(AttendanceRecord::class);
+    }
+
+    public function masterAssessments(): HasMany
+    {
+        return $this->hasMany(MasterAssessment::class);
+    }
+
+    public function studentMasterAssessmentAttempts(): HasMany
+    {
+        return $this->hasMany(StudentMasterAssessmentAttempt::class);
+    }
+
+    public function usesAttendance(): bool
+    {
+        return in_array($this->progress_basis, [
+            self::PROGRESS_BASIS_ATTENDANCE,
+            self::PROGRESS_BASIS_HYBRID,
+        ], true);
+    }
+
+    public function usesSubmissions(): bool
+    {
+        return in_array($this->progress_basis, [
+            self::PROGRESS_BASIS_SUBMISSIONS,
+            self::PROGRESS_BASIS_HYBRID,
+        ], true);
+    }
+
+    public function usesManualApproval(): bool
+    {
+        return $this->progress_basis === self::PROGRESS_BASIS_MANUAL;
+    }
+
+    public function usesMasterAssessment(): bool
+    {
+        return $this->progress_basis === self::PROGRESS_BASIS_MASTER_ASSESSMENT;
     }
 
     public function enrolledCount(): int

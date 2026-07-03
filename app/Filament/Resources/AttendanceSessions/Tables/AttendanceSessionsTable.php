@@ -62,6 +62,7 @@ class AttendanceSessionsTable
                     ->options(AttendanceSession::STATUS_OPTIONS),
             ])
             ->recordActions([
+                AttendanceSessionResource::quickMarkAttendanceAction(),
                 AttendanceSessionResource::generateRosterRecordsAction(),
                 EditAction::make(),
             ])

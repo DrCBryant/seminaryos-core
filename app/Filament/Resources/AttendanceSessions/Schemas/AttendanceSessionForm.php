@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Institution;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -25,6 +26,9 @@ class AttendanceSessionForm
             ->components([
                 Section::make('Attendance Session Details')
                     ->schema([
+                        Placeholder::make('attendance_progress_note')
+                            ->label('Attendance Note')
+                            ->content('Attendance applies to sections whose progress basis is attendance or hybrid. Other sections may use submissions, manual approval, or master assessment.'),
                         Grid::make(2)
                             ->schema([
                                 Select::make('institution_id')
@@ -38,6 +42,7 @@ class AttendanceSessionForm
                                     ->label('Course offering')
                                     ->relationship('courseOffering', 'section_code', fn ($query) => $query->orderByDesc('academic_term_id')->orderBy('section_code'))
                                     ->getOptionLabelFromRecordUsing(fn (CourseOffering $record): string => trim("{$record->course?->code} — {$record->academicTerm?->name} ({$record->academicTerm?->academic_year}) — {$record->section_code}"))
+                                    ->helperText('Attendance is primary completion evidence only for attendance and hybrid sections.')
                                     ->searchable()
                                     ->preload()
                                     ->required()

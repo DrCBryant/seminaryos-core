@@ -73,6 +73,11 @@ class CourseOfferingsTable
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => CourseOffering::STATUS_OPTIONS[$state] ?? $state)
                     ->sortable(),
+                TextColumn::make('progress_basis')
+                    ->label('Progress basis')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => CourseOffering::PROGRESS_BASIS_OPTIONS[$state] ?? $state)
+                    ->sortable(),
             ])
             ->modifyQueryUsing(fn ($query) => $query->withCapacityAwareness())
             ->filters([
@@ -98,6 +103,9 @@ class CourseOfferingsTable
                     ->options(CourseOffering::DELIVERY_MODE_OPTIONS),
                 SelectFilter::make('status')
                     ->options(CourseOffering::STATUS_OPTIONS),
+                SelectFilter::make('progress_basis')
+                    ->label('Progress basis')
+                    ->options(CourseOffering::PROGRESS_BASIS_OPTIONS),
             ])
             ->recordActions([
                 CourseOfferingResource::rosterAction(),

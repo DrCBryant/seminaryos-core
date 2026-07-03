@@ -89,4 +89,9 @@ class Student extends BaseModel
     {
         return $this->hasMany(ProgramRequirementSubstitution::class);
     }
+
+    public function studentMasterAssessmentAttempts(): HasMany
+    {
+        return $this->hasMany(StudentMasterAssessmentAttempt::class);
+    }
 }
