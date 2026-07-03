@@ -77,6 +77,11 @@ class Course extends BaseModel
         return $this->hasMany(CourseOffering::class);
     }
 
+    public function attendanceSessions(): HasMany
+    {
+        return $this->hasMany(AttendanceSession::class);
+    }
+
     public function substituteProgramRequirementSubstitutions(): HasMany
     {
         return $this->hasMany(ProgramRequirementSubstitution::class, 'substitute_course_id');

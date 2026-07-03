@@ -104,6 +104,16 @@ class CourseOffering extends BaseModel
         return $this->hasMany(TeachingAssignment::class);
     }
 
+    public function attendanceSessions(): HasMany
+    {
+        return $this->hasMany(AttendanceSession::class);
+    }
+
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(AttendanceRecord::class);
+    }
+
     public function enrolledCount(): int
     {
         $relation = $this->relationLoaded('courseEnrollments')
