@@ -13,6 +13,7 @@ class EditCourseOffering extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            CourseOfferingResource::sectionProgressAction(),
             CourseOfferingResource::rosterAction(),
             DeleteAction::make(),
         ];

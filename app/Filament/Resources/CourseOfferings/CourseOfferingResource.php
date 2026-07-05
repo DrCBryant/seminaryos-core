@@ -11,6 +11,7 @@ use App\Filament\Resources\CourseOfferings\RelationManagers\CourseEnrollmentsRel
 use App\Filament\Resources\CourseOfferings\RelationManagers\MasterAssessmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\TeachingAssignmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\Schemas\CourseOfferingForm;
+use App\Filament\Resources\CourseOfferings\Support\SectionProgressPreview;
 use App\Filament\Resources\CourseOfferings\Tables\CourseOfferingsTable;
 use App\Models\CourseOffering;
 use BackedEnum;
@@ -66,6 +67,11 @@ class CourseOfferingResource extends Resource
             ->color('gray')
             ->url(fn (CourseOffering $record): string => static::getUrl('roster', ['record' => $record]))
             ->openUrlInNewTab();
+    }
+
+    public static function sectionProgressAction(): Action
+    {
+        return SectionProgressPreview::make();
     }
 
     public static function getPages(): array

@@ -108,6 +108,7 @@ class CourseOfferingsTable
                     ->options(CourseOffering::PROGRESS_BASIS_OPTIONS),
             ])
             ->recordActions([
+                CourseOfferingResource::sectionProgressAction(),
                 CourseOfferingResource::rosterAction(),
                 EditAction::make(),
             ])
