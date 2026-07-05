@@ -139,6 +139,11 @@ class CourseOffering extends BaseModel
         return $this->hasMany(MasterAssessment::class);
     }
 
+    public function sectionAssignments(): HasMany
+    {
+        return $this->hasMany(SectionAssignment::class);
+    }
+
     public function studentMasterAssessmentAttempts(): HasMany
     {
         return $this->hasMany(StudentMasterAssessmentAttempt::class);

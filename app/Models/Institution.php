@@ -157,6 +157,11 @@ class Institution extends Model
         return $this->hasMany(CourseOffering::class);
     }
 
+    public function sectionAssignments(): HasMany
+    {
+        return $this->hasMany(SectionAssignment::class);
+    }
+
     public function masterAssessments(): HasMany
     {
         return $this->hasMany(MasterAssessment::class);

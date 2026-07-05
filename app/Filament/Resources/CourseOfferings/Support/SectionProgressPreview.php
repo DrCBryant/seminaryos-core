@@ -7,6 +7,7 @@ use App\Models\AttendanceSession;
 use App\Models\CourseEnrollment;
 use App\Models\CourseOffering;
 use App\Models\MasterAssessment;
+use App\Models\SectionAssignment;
 use App\Models\StudentMasterAssessmentAttempt;
 use Filament\Actions\Action;
 use Illuminate\Support\Carbon;
@@ -64,6 +65,10 @@ class SectionProgressPreview
                 ->with('attendanceSession')
                 ->orderBy('marked_at')
                 ->orderBy('created_at'),
+            'sectionAssignments' => fn ($query) => $query
+                ->orderBy('sort_order')
+                ->orderBy('due_at')
+                ->orderBy('id'),
             'masterAssessments' => fn ($query) => $query->orderBy('title')->orderBy('id'),
             'studentMasterAssessmentAttempts.masterAssessment',
         ]);
@@ -91,6 +96,11 @@ class SectionProgressPreview
             ->filter()
             ->map(fn (mixed $id): int => (int) $id)
             ->all();
+
+        $activeRequiredAssignments = $courseOffering->sectionAssignments
+            ->filter(fn (SectionAssignment $assignment): bool => $assignment->status === SectionAssignment::STATUS_ACTIVE
+                && $assignment->is_required)
+            ->values();
 
         $attendanceRecordsByEnrollmentId = $courseOffering->attendanceRecords
             ->filter(fn (AttendanceRecord $record): bool => $record->course_enrollment_id !== null)
@@ -122,6 +132,7 @@ class SectionProgressPreview
                 $heldSessionIds,
                 $activeMasterAssessments,
                 $activeMasterAssessmentIds,
+                $activeRequiredAssignments,
                 $attendanceRecordsByEnrollmentId,
                 $attendanceRecordsByStudentId,
                 $attemptsByEnrollmentId,
@@ -145,8 +156,8 @@ class SectionProgressPreview
                     CourseOffering::PROGRESS_BASIS_ATTENDANCE => self::evaluateAttendanceProgress($heldSessions, $attendanceRecords),
                     CourseOffering::PROGRESS_BASIS_MASTER_ASSESSMENT => self::evaluateMasterAssessmentProgress($activeMasterAssessments, $masterAssessmentAttempts),
                     CourseOffering::PROGRESS_BASIS_MANUAL => self::evaluateManualProgress(),
-                    CourseOffering::PROGRESS_BASIS_SUBMISSIONS => self::evaluateSubmissionsProgress(),
-                    CourseOffering::PROGRESS_BASIS_HYBRID => self::evaluateHybridProgress($heldSessions, $attendanceRecords),
+                    CourseOffering::PROGRESS_BASIS_SUBMISSIONS => self::evaluateSubmissionsProgress($activeRequiredAssignments),
+                    CourseOffering::PROGRESS_BASIS_HYBRID => self::evaluateHybridProgress($heldSessions, $attendanceRecords, $activeRequiredAssignments),
                     default => self::evaluateNotEvaluableProgress(
                         self::formatProgressBasisLabel($courseOffering->progress_basis),
                         'This section progress basis is not recognized by the preview.',
@@ -453,34 +464,46 @@ class SectionProgressPreview
     /**
      * @return array<string, mixed>
      */
-    protected static function evaluateSubmissionsProgress(): array
+    protected static function evaluateSubmissionsProgress(Collection $activeRequiredAssignments): array
     {
         return self::evaluateNotEvaluableProgress(
             self::formatProgressBasisLabel(CourseOffering::PROGRESS_BASIS_SUBMISSIONS),
-            'Section assignments and student submissions are not built yet, so this section cannot be evaluated by preview.',
+            self::formatAssignmentEvidenceSummary($activeRequiredAssignments),
         );
     }
 
     /**
      * @return array<string, mixed>
      */
-    protected static function evaluateHybridProgress(Collection $heldSessions, Collection $attendanceRecords): array
+    protected static function evaluateHybridProgress(Collection $heldSessions, Collection $attendanceRecords, Collection $activeRequiredAssignments): array
     {
         $attendanceProgress = self::evaluateAttendanceProgress($heldSessions, $attendanceRecords);
+        $assignmentEvidenceSummary = self::formatAssignmentEvidenceSummary($activeRequiredAssignments);
 
         if (($attendanceProgress['has_attendance_evidence'] ?? false) !== true) {
             return self::evaluateNotEvaluableProgress(
                 'Hybrid (Attendance Evidence Only)',
-                'Attendance evidence is not yet available for this student, and submissions evidence is not built yet for hybrid sections.',
+                $assignmentEvidenceSummary.' Attendance evidence is not yet available for this student, and hybrid sections cannot be marked satisfied by this preview.',
             );
         }
 
         return [
             'progress_status' => 'in_progress',
             'progress_basis_used' => 'Hybrid (Attendance Evidence Only)',
-            'evidence_summary' => 'Attendance preview: '.$attendanceProgress['evidence_summary'].' Submissions evidence is not built yet, so hybrid sections cannot be marked satisfied by this preview.',
+            'evidence_summary' => 'Attendance preview: '.$attendanceProgress['evidence_summary'].' '.$assignmentEvidenceSummary.' Hybrid sections cannot be marked satisfied by this preview.',
             'last_activity_date' => $attendanceProgress['last_activity_date'],
         ];
+    }
+
+    protected static function formatAssignmentEvidenceSummary(Collection $activeRequiredAssignments): string
+    {
+        $activeRequiredAssignmentCount = $activeRequiredAssignments->count();
+
+        if ($activeRequiredAssignmentCount === 0) {
+            return 'No active required assignments are defined yet for this section.';
+        }
+
+        return "{$activeRequiredAssignmentCount} active required section assignment(s) exist, but student submission evidence is not built yet.";
     }
 
     /**

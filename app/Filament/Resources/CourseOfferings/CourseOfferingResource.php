@@ -9,6 +9,7 @@ use App\Filament\Resources\CourseOfferings\Pages\ViewCourseOfferingRoster;
 use App\Filament\Resources\CourseOfferings\RelationManagers\AttendanceSessionsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\CourseEnrollmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\MasterAssessmentsRelationManager;
+use App\Filament\Resources\CourseOfferings\RelationManagers\SectionAssignmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\TeachingAssignmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\Schemas\CourseOfferingForm;
 use App\Filament\Resources\CourseOfferings\Support\SectionProgressPreview;
@@ -55,6 +56,7 @@ class CourseOfferingResource extends Resource
             AttendanceSessionsRelationManager::class,
             CourseEnrollmentsRelationManager::class,
             TeachingAssignmentsRelationManager::class,
+            SectionAssignmentsRelationManager::class,
             MasterAssessmentsRelationManager::class,
         ];
     }

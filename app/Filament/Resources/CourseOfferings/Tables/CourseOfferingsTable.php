@@ -65,6 +65,10 @@ class CourseOfferingsTable
                     ->label('Teaching assignments')
                     ->counts('teachingAssignments')
                     ->sortable(),
+                TextColumn::make('sectionAssignments_count')
+                    ->label('Assignments')
+                    ->counts('sectionAssignments')
+                    ->sortable(),
                 TextColumn::make('delivery_mode')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => CourseOffering::DELIVERY_MODE_OPTIONS[$state] ?? $state)
