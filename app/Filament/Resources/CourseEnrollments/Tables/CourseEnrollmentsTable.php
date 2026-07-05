@@ -8,13 +8,16 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\GradeScale;
 use App\Models\GradeValue;
+use App\Support\SectionProgress\SectionProgressEvaluator;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -30,6 +33,13 @@ use Illuminate\Support\Facades\DB;
 class CourseEnrollmentsTable
 {
     protected const COMPLETABLE_STATUSES = ['enrolled', 'active'];
+
+    protected const OVERRIDABLE_PROGRESS_STATUSES = [
+        'not_started',
+        'in_progress',
+        'needs_attention',
+        'not_evaluable',
+    ];
 
     public static function configure(Table $table): Table
     {
@@ -106,6 +116,37 @@ class CourseEnrollmentsTable
                     ->modalHeading('Complete enrollment')
                     ->modalDescription('This will mark the enrollment as completed and create a durable academic record snapshot.')
                     ->form([
+                        Placeholder::make('progress_basis_preview')
+                            ->label('Progress basis')
+                            ->content(fn (CourseEnrollment $record): string => self::progressEvaluationForModal($record)['progress_basis']),
+                        Placeholder::make('progress_status_preview')
+                            ->label('Progress status')
+                            ->content(fn (CourseEnrollment $record): string => self::progressEvaluationForModal($record)['progress_status']),
+                        Placeholder::make('progress_evidence_preview')
+                            ->label('Evidence summary')
+                            ->content(fn (CourseEnrollment $record): string => self::progressEvaluationForModal($record)['evidence_summary']),
+                        Placeholder::make('progress_last_activity_preview')
+                            ->label('Last activity')
+                            ->content(fn (CourseEnrollment $record): string => self::progressEvaluationForModal($record)['last_activity_at']),
+                        Checkbox::make('confirm_override_completion')
+                            ->label('Complete with override')
+                            ->helperText('Required when section progress is not satisfied or not evaluable.')
+                            ->visible(fn (CourseEnrollment $record): bool => self::progressEvaluationForModal($record)['requires_override'])
+                            ->required(fn (CourseEnrollment $record): bool => self::progressEvaluationForModal($record)['requires_override']),
+                        Textarea::make('completion_override_reason')
+                            ->label('Override reason')
+                            ->rows(3)
+                            ->visible(fn (CourseEnrollment $record): bool => self::progressEvaluationForModal($record)['requires_override'])
+                            ->required(fn (CourseEnrollment $record): bool => self::progressEvaluationForModal($record)['requires_override'])
+                            ->rule(function (CourseEnrollment $record): \Closure {
+                                return function (string $attribute, $value, \Closure $fail) use ($record): void {
+                                    $evaluation = self::progressEvaluationForModal($record);
+
+                                    if ($evaluation['requires_override'] && blank($value)) {
+                                        $fail('An override reason is required when progress is not satisfied or not evaluable.');
+                                    }
+                                };
+                            }),
                         Select::make('grade_scale_id')
                             ->label('Grade scale')
                             ->options(fn (CourseEnrollment $record): array => GradeScale::query()
@@ -179,6 +220,28 @@ class CourseEnrollmentsTable
                             return;
                         }
 
+                        $progressEvaluation = self::progressEvaluationSnapshot($record);
+
+                        if ($progressEvaluation['requires_override'] && ! ($data['confirm_override_completion'] ?? false)) {
+                            Notification::make()
+                                ->title('Override confirmation is required')
+                                ->body('This enrollment can be completed, but only with an explicit override because section progress is not satisfied or not evaluable.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        if ($progressEvaluation['requires_override'] && blank($data['completion_override_reason'] ?? null)) {
+                            Notification::make()
+                                ->title('Override reason is required')
+                                ->body('Enter an override reason before completing an enrollment whose evaluated progress is not satisfied or not evaluable.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
                         $selectedGradeValue = null;
 
                         if (filled($data['grade_value_id'] ?? null)) {
@@ -210,7 +273,7 @@ class CourseEnrollmentsTable
                             return;
                         }
 
-                        DB::transaction(function () use ($record, $data): void {
+                        DB::transaction(function () use ($record, $data, $progressEvaluation): void {
                             $selectedGradeValue = null;
 
                             if (filled($data['grade_value_id'] ?? null)) {
@@ -226,6 +289,12 @@ class CourseEnrollmentsTable
                                 'status' => 'completed',
                                 'final_grade' => $finalGrade,
                                 'completed_at' => $data['completed_at'],
+                                'completion_progress_basis' => $progressEvaluation['progress_basis_raw'],
+                                'completion_progress_status' => $progressEvaluation['progress_status_raw'],
+                                'completion_evidence_summary' => $progressEvaluation['evidence_summary_raw'],
+                                'completion_override_reason' => $progressEvaluation['requires_override'] ? ($data['completion_override_reason'] ?? null) : null,
+                                'completion_reviewed_at' => now(),
+                                'completion_reviewed_by_user_id' => auth()->id(),
                             ])->save();
 
                             AcademicRecord::create([
@@ -266,5 +335,60 @@ class CourseEnrollmentsTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected static function progressEvaluationForModal(CourseEnrollment $record): array
+    {
+        $evaluation = self::progressEvaluationSnapshot($record);
+
+        return [
+            'progress_basis' => $evaluation['progress_basis'],
+            'progress_status' => $evaluation['progress_status'],
+            'evidence_summary' => $evaluation['evidence_summary'],
+            'last_activity_at' => $evaluation['last_activity_at'],
+            'requires_override' => $evaluation['requires_override'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected static function progressEvaluationSnapshot(CourseEnrollment $record): array
+    {
+        $record->loadMissing([
+            'courseOffering',
+        ]);
+
+        if (! $record->course_offering_id || ! $record->courseOffering) {
+            return [
+                'progress_basis' => 'Legacy Enrollment',
+                'progress_basis_raw' => null,
+                'progress_status' => 'Not Available',
+                'progress_status_raw' => null,
+                'evidence_summary' => 'No section progress evaluation is available because this enrollment is not linked to a course offering. Legacy completion behavior is preserved.',
+                'evidence_summary_raw' => 'No section progress evaluation is available because this enrollment is not linked to a course offering. Legacy completion behavior is preserved.',
+                'last_activity_at' => '—',
+                'requires_override' => false,
+            ];
+        }
+
+        $record->courseOffering->loadMissing(SectionProgressEvaluator::courseOfferingRelations());
+
+        $evaluation = SectionProgressEvaluator::evaluateEnrollment($record);
+        $rawStatus = $evaluation['progress_status'] ?? null;
+
+        return [
+            'progress_basis' => $evaluation['progress_basis_used'] ?? '—',
+            'progress_basis_raw' => $record->courseOffering->progress_basis,
+            'progress_status' => filled($rawStatus) ? SectionProgressEvaluator::formatProgressStatusLabel($rawStatus) : '—',
+            'progress_status_raw' => $rawStatus,
+            'evidence_summary' => $evaluation['evidence_summary'] ?? '—',
+            'evidence_summary_raw' => $evaluation['evidence_summary'] ?? null,
+            'last_activity_at' => ($evaluation['last_activity_date'] ?? null)?->toDateTimeString() ?? '—',
+            'requires_override' => in_array($rawStatus, self::OVERRIDABLE_PROGRESS_STATUSES, true),
+        ];
     }
 }

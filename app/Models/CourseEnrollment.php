@@ -25,12 +25,19 @@ class CourseEnrollment extends BaseModel
         'enrolled_at',
         'completed_at',
         'final_grade',
+        'completion_progress_basis',
+        'completion_progress_status',
+        'completion_evidence_summary',
+        'completion_override_reason',
+        'completion_reviewed_at',
+        'completion_reviewed_by_user_id',
         'notes',
     ];
 
     protected $casts = [
         'enrolled_at' => 'datetime',
         'completed_at' => 'datetime',
+        'completion_reviewed_at' => 'datetime',
     ];
 
     public function institution(): BelongsTo
@@ -56,6 +63,11 @@ class CourseEnrollment extends BaseModel
     public function courseOffering(): BelongsTo
     {
         return $this->belongsTo(CourseOffering::class);
+    }
+
+    public function completionReviewedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completion_reviewed_by_user_id');
     }
 
     public function academicRecord(): HasOne
