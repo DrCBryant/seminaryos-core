@@ -99,4 +99,9 @@ class Student extends BaseModel
     {
         return $this->hasMany(StudentSectionSubmission::class);
     }
+
+    public function studentSectionManualCompletions(): HasMany
+    {
+        return $this->hasMany(StudentSectionManualCompletion::class);
+    }
 }

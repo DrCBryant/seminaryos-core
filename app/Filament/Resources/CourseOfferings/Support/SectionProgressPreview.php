@@ -9,6 +9,7 @@ use App\Models\CourseOffering;
 use App\Models\MasterAssessment;
 use App\Models\SectionAssignment;
 use App\Models\StudentMasterAssessmentAttempt;
+use App\Models\StudentSectionManualCompletion;
 use App\Models\StudentSectionSubmission;
 use Filament\Actions\Action;
 use Illuminate\Support\Carbon;
@@ -70,6 +71,7 @@ class SectionProgressPreview
                 ->orderBy('sort_order')
                 ->orderBy('due_at')
                 ->orderBy('id'),
+            'studentSectionManualCompletions',
             'studentSectionSubmissions.sectionAssignment',
             'masterAssessments' => fn ($query) => $query->orderBy('title')->orderBy('id'),
             'studentMasterAssessmentAttempts.masterAssessment',
@@ -128,6 +130,14 @@ class SectionProgressPreview
             ->filter(fn (StudentSectionSubmission $submission): bool => $submission->student_id !== null)
             ->groupBy('student_id');
 
+        $manualCompletionsByEnrollmentId = $courseOffering->studentSectionManualCompletions
+            ->filter(fn (StudentSectionManualCompletion $completion): bool => $completion->course_enrollment_id !== null)
+            ->groupBy('course_enrollment_id');
+
+        $manualCompletionsByStudentId = $courseOffering->studentSectionManualCompletions
+            ->filter(fn (StudentSectionManualCompletion $completion): bool => $completion->student_id !== null)
+            ->groupBy('student_id');
+
         $studentRows = $courseOffering->courseEnrollments
             ->sortBy([
                 fn (CourseEnrollment $enrollment): string => strtolower((string) $enrollment->student?->last_name),
@@ -147,6 +157,8 @@ class SectionProgressPreview
                 $attendanceRecordsByStudentId,
                 $attemptsByEnrollmentId,
                 $attemptsByStudentId,
+                $manualCompletionsByEnrollmentId,
+                $manualCompletionsByStudentId,
                 $submissionsByEnrollmentId,
                 $submissionsByStudentId,
             ): array {
@@ -171,10 +183,16 @@ class SectionProgressPreview
                     $activeRequiredAssignments->pluck('id')->map(fn (mixed $id): int => (int) $id)->all(),
                 );
 
+                $manualCompletion = self::resolveManualCompletionForEnrollment(
+                    $enrollment,
+                    $manualCompletionsByEnrollmentId,
+                    $manualCompletionsByStudentId,
+                );
+
                 $progress = match ($courseOffering->progress_basis) {
                     CourseOffering::PROGRESS_BASIS_ATTENDANCE => self::evaluateAttendanceProgress($heldSessions, $attendanceRecords),
                     CourseOffering::PROGRESS_BASIS_MASTER_ASSESSMENT => self::evaluateMasterAssessmentProgress($activeMasterAssessments, $masterAssessmentAttempts),
-                    CourseOffering::PROGRESS_BASIS_MANUAL => self::evaluateManualProgress(),
+                    CourseOffering::PROGRESS_BASIS_MANUAL => self::evaluateManualProgress($manualCompletion),
                     CourseOffering::PROGRESS_BASIS_SUBMISSIONS => self::evaluateSubmissionsProgress($activeRequiredAssignments, $sectionSubmissions),
                     CourseOffering::PROGRESS_BASIS_HYBRID => self::evaluateHybridProgress($heldSessions, $attendanceRecords, $activeRequiredAssignments, $sectionSubmissions),
                     default => self::evaluateNotEvaluableProgress(
@@ -270,6 +288,20 @@ class SectionProgressPreview
             ->filter(fn (StudentSectionSubmission $submission): bool => $submission->section_assignment_id !== null
                 && in_array((int) $submission->section_assignment_id, $activeRequiredAssignmentIds, true))
             ->values();
+    }
+
+    protected static function resolveManualCompletionForEnrollment(
+        CourseEnrollment $enrollment,
+        Collection $manualCompletionsByEnrollmentId,
+        Collection $manualCompletionsByStudentId,
+    ): ?StudentSectionManualCompletion {
+        $manualCompletions = collect($manualCompletionsByEnrollmentId->get($enrollment->id, []));
+
+        if ($manualCompletions->isEmpty() && $enrollment->student_id !== null) {
+            $manualCompletions = collect($manualCompletionsByStudentId->get($enrollment->student_id, []));
+        }
+
+        return self::resolveRepresentativeManualCompletion($manualCompletions);
     }
 
     /**
@@ -490,12 +522,60 @@ class SectionProgressPreview
     /**
      * @return array<string, mixed>
      */
-    protected static function evaluateManualProgress(): array
+    protected static function evaluateManualProgress(?StudentSectionManualCompletion $manualCompletion): array
     {
-        return self::evaluateNotEvaluableProgress(
-            self::formatProgressBasisLabel(CourseOffering::PROGRESS_BASIS_MANUAL),
-            'Manual completion evidence is not built yet, so this section cannot be evaluated by preview.',
-        );
+        $basisLabel = self::formatProgressBasisLabel(CourseOffering::PROGRESS_BASIS_MANUAL);
+
+        if ($manualCompletion === null) {
+            return [
+                'progress_status' => 'not_started',
+                'progress_basis_used' => $basisLabel,
+                'evidence_summary' => 'No manual completion evidence record exists for this student yet.',
+                'last_activity_date' => null,
+            ];
+        }
+
+        if ($manualCompletion->status === StudentSectionManualCompletion::STATUS_ARCHIVED) {
+            return self::evaluateNotEvaluableProgress(
+                $basisLabel,
+                'Only archived manual completion evidence exists for this student.',
+            );
+        }
+
+        $hasEvidenceContent = filled($manualCompletion->completion_summary)
+            || filled($manualCompletion->evidence_reference)
+            || filled($manualCompletion->approver_notes);
+
+        $lastActivityDate = self::resolveManualCompletionActivityDate($manualCompletion);
+
+        return match ($manualCompletion->status) {
+            StudentSectionManualCompletion::STATUS_APPROVED,
+            StudentSectionManualCompletion::STATUS_WAIVED => [
+                'progress_status' => 'satisfied',
+                'progress_basis_used' => $basisLabel,
+                'evidence_summary' => 'Manual completion evidence is approved or waived for this student.',
+                'last_activity_date' => $lastActivityDate,
+            ],
+            StudentSectionManualCompletion::STATUS_REVISION_NEEDED,
+            StudentSectionManualCompletion::STATUS_REJECTED => [
+                'progress_status' => 'needs_attention',
+                'progress_basis_used' => $basisLabel,
+                'evidence_summary' => 'Manual completion evidence needs revision or has been rejected for this student.',
+                'last_activity_date' => $lastActivityDate,
+            ],
+            StudentSectionManualCompletion::STATUS_PENDING => [
+                'progress_status' => $hasEvidenceContent ? 'in_progress' : 'not_started',
+                'progress_basis_used' => $basisLabel,
+                'evidence_summary' => $hasEvidenceContent
+                    ? 'Manual completion evidence is pending approval and contains submitted evidence details.'
+                    : 'Manual completion record exists but no completion evidence has been entered yet.',
+                'last_activity_date' => $lastActivityDate,
+            ],
+            default => self::evaluateNotEvaluableProgress(
+                $basisLabel,
+                'This manual completion status is not recognized by the preview.',
+            ),
+        };
     }
 
     /**
@@ -727,6 +807,23 @@ class SectionProgressPreview
         return self::sortAttemptsOrRecordsByRecency($submissions)->first();
     }
 
+    protected static function resolveRepresentativeManualCompletion(Collection $manualCompletions): ?StudentSectionManualCompletion
+    {
+        if ($manualCompletions->isEmpty()) {
+            return null;
+        }
+
+        $nonArchivedCompletions = $manualCompletions
+            ->filter(fn (StudentSectionManualCompletion $completion): bool => $completion->status !== StudentSectionManualCompletion::STATUS_ARCHIVED)
+            ->values();
+
+        if ($nonArchivedCompletions->isNotEmpty()) {
+            return self::sortAttemptsOrRecordsByRecency($nonArchivedCompletions)->first();
+        }
+
+        return self::sortAttemptsOrRecordsByRecency($manualCompletions)->first();
+    }
+
     protected static function resolveAttendanceActivityDate(AttendanceRecord $record): ?Carbon
     {
         return self::firstCarbonValue([
@@ -754,6 +851,15 @@ class SectionProgressPreview
             $submission->submitted_at,
             $submission->updated_at,
             $submission->created_at,
+        ]);
+    }
+
+    protected static function resolveManualCompletionActivityDate(StudentSectionManualCompletion $manualCompletion): ?Carbon
+    {
+        return self::firstCarbonValue([
+            $manualCompletion->approved_at,
+            $manualCompletion->updated_at,
+            $manualCompletion->created_at,
         ]);
     }
 

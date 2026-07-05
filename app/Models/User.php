@@ -63,6 +63,11 @@ class User extends Authenticatable
         return $this->hasMany(StudentSectionSubmission::class, 'reviewer_user_id');
     }
 
+    public function approvedStudentSectionManualCompletions(): HasMany
+    {
+        return $this->hasMany(StudentSectionManualCompletion::class, 'approver_user_id');
+    }
+
     /**
      * Get the attributes that should be cast.
      *

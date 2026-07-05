@@ -10,6 +10,7 @@ use App\Filament\Resources\CourseOfferings\RelationManagers\AttendanceSessionsRe
 use App\Filament\Resources\CourseOfferings\RelationManagers\CourseEnrollmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\MasterAssessmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\SectionAssignmentsRelationManager;
+use App\Filament\Resources\CourseOfferings\RelationManagers\StudentSectionManualCompletionsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\StudentSectionSubmissionsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\TeachingAssignmentsRelationManager;
 use App\Filament\Resources\CourseOfferings\Schemas\CourseOfferingForm;
@@ -17,6 +18,7 @@ use App\Filament\Resources\CourseOfferings\Support\SectionProgressPreview;
 use App\Filament\Resources\CourseOfferings\Tables\CourseOfferingsTable;
 use App\Models\CourseOffering;
 use App\Models\SectionAssignment;
+use App\Models\StudentSectionManualCompletion;
 use App\Models\StudentSectionSubmission;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -61,6 +63,7 @@ class CourseOfferingResource extends Resource
             CourseEnrollmentsRelationManager::class,
             TeachingAssignmentsRelationManager::class,
             SectionAssignmentsRelationManager::class,
+            StudentSectionManualCompletionsRelationManager::class,
             StudentSectionSubmissionsRelationManager::class,
             MasterAssessmentsRelationManager::class,
         ];
@@ -115,6 +118,37 @@ class CourseOfferingResource extends Resource
                                 ],
                             );
                         }
+                    }
+                });
+            });
+    }
+
+    public static function generateManualCompletionChecklistAction(): Action
+    {
+        return Action::make('generateManualCompletionChecklist')
+            ->label('Generate Manual Completion Checklist')
+            ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+            ->color('gray')
+            ->requiresConfirmation()
+            ->action(function (CourseOffering $record): void {
+                DB::transaction(function () use ($record): void {
+                    $enrollments = $record->courseEnrollments()
+                        ->whereNotIn('status', ['dropped', 'withdrawn'])
+                        ->whereNotNull('student_id')
+                        ->get();
+
+                    foreach ($enrollments as $enrollment) {
+                        StudentSectionManualCompletion::query()->firstOrCreate(
+                            [
+                                'course_offering_id' => $record->id,
+                                'student_id' => $enrollment->student_id,
+                            ],
+                            [
+                                'institution_id' => $record->institution_id,
+                                'course_enrollment_id' => $enrollment->id,
+                                'status' => StudentSectionManualCompletion::STATUS_PENDING,
+                            ],
+                        );
                     }
                 });
             });
