@@ -9,6 +9,7 @@ use App\Models\CourseOffering;
 use App\Models\MasterAssessment;
 use App\Models\SectionAssignment;
 use App\Models\StudentMasterAssessmentAttempt;
+use App\Models\StudentSectionSubmission;
 use Filament\Actions\Action;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -69,6 +70,7 @@ class SectionProgressPreview
                 ->orderBy('sort_order')
                 ->orderBy('due_at')
                 ->orderBy('id'),
+            'studentSectionSubmissions.sectionAssignment',
             'masterAssessments' => fn ($query) => $query->orderBy('title')->orderBy('id'),
             'studentMasterAssessmentAttempts.masterAssessment',
         ]);
@@ -118,6 +120,14 @@ class SectionProgressPreview
             ->filter(fn (StudentMasterAssessmentAttempt $attempt): bool => $attempt->student_id !== null)
             ->groupBy('student_id');
 
+        $submissionsByEnrollmentId = $courseOffering->studentSectionSubmissions
+            ->filter(fn (StudentSectionSubmission $submission): bool => $submission->course_enrollment_id !== null)
+            ->groupBy('course_enrollment_id');
+
+        $submissionsByStudentId = $courseOffering->studentSectionSubmissions
+            ->filter(fn (StudentSectionSubmission $submission): bool => $submission->student_id !== null)
+            ->groupBy('student_id');
+
         $studentRows = $courseOffering->courseEnrollments
             ->sortBy([
                 fn (CourseEnrollment $enrollment): string => strtolower((string) $enrollment->student?->last_name),
@@ -137,6 +147,8 @@ class SectionProgressPreview
                 $attendanceRecordsByStudentId,
                 $attemptsByEnrollmentId,
                 $attemptsByStudentId,
+                $submissionsByEnrollmentId,
+                $submissionsByStudentId,
             ): array {
                 $attendanceRecords = self::resolveAttendanceRecordsForEnrollment(
                     $enrollment,
@@ -152,12 +164,19 @@ class SectionProgressPreview
                     $activeMasterAssessmentIds,
                 );
 
+                $sectionSubmissions = self::resolveSectionSubmissionsForEnrollment(
+                    $enrollment,
+                    $submissionsByEnrollmentId,
+                    $submissionsByStudentId,
+                    $activeRequiredAssignments->pluck('id')->map(fn (mixed $id): int => (int) $id)->all(),
+                );
+
                 $progress = match ($courseOffering->progress_basis) {
                     CourseOffering::PROGRESS_BASIS_ATTENDANCE => self::evaluateAttendanceProgress($heldSessions, $attendanceRecords),
                     CourseOffering::PROGRESS_BASIS_MASTER_ASSESSMENT => self::evaluateMasterAssessmentProgress($activeMasterAssessments, $masterAssessmentAttempts),
                     CourseOffering::PROGRESS_BASIS_MANUAL => self::evaluateManualProgress(),
-                    CourseOffering::PROGRESS_BASIS_SUBMISSIONS => self::evaluateSubmissionsProgress($activeRequiredAssignments),
-                    CourseOffering::PROGRESS_BASIS_HYBRID => self::evaluateHybridProgress($heldSessions, $attendanceRecords, $activeRequiredAssignments),
+                    CourseOffering::PROGRESS_BASIS_SUBMISSIONS => self::evaluateSubmissionsProgress($activeRequiredAssignments, $sectionSubmissions),
+                    CourseOffering::PROGRESS_BASIS_HYBRID => self::evaluateHybridProgress($heldSessions, $attendanceRecords, $activeRequiredAssignments, $sectionSubmissions),
                     default => self::evaluateNotEvaluableProgress(
                         self::formatProgressBasisLabel($courseOffering->progress_basis),
                         'This section progress basis is not recognized by the preview.',
@@ -232,6 +251,24 @@ class SectionProgressPreview
         return $attempts
             ->filter(fn (StudentMasterAssessmentAttempt $attempt): bool => $attempt->master_assessment_id !== null
                 && in_array((int) $attempt->master_assessment_id, $activeMasterAssessmentIds, true))
+            ->values();
+    }
+
+    protected static function resolveSectionSubmissionsForEnrollment(
+        CourseEnrollment $enrollment,
+        Collection $submissionsByEnrollmentId,
+        Collection $submissionsByStudentId,
+        array $activeRequiredAssignmentIds,
+    ): Collection {
+        $submissions = collect($submissionsByEnrollmentId->get($enrollment->id, []));
+
+        if ($submissions->isEmpty() && $enrollment->student_id !== null) {
+            $submissions = collect($submissionsByStudentId->get($enrollment->student_id, []));
+        }
+
+        return $submissions
+            ->filter(fn (StudentSectionSubmission $submission): bool => $submission->section_assignment_id !== null
+                && in_array((int) $submission->section_assignment_id, $activeRequiredAssignmentIds, true))
             ->values();
     }
 
@@ -464,46 +501,183 @@ class SectionProgressPreview
     /**
      * @return array<string, mixed>
      */
-    protected static function evaluateSubmissionsProgress(Collection $activeRequiredAssignments): array
+    protected static function evaluateSubmissionsProgress(Collection $activeRequiredAssignments, Collection $submissions): array
     {
-        return self::evaluateNotEvaluableProgress(
-            self::formatProgressBasisLabel(CourseOffering::PROGRESS_BASIS_SUBMISSIONS),
-            self::formatAssignmentEvidenceSummary($activeRequiredAssignments),
-        );
+        return self::evaluateSubmissionEvidence($activeRequiredAssignments, $submissions, self::formatProgressBasisLabel(CourseOffering::PROGRESS_BASIS_SUBMISSIONS));
     }
 
     /**
      * @return array<string, mixed>
      */
-    protected static function evaluateHybridProgress(Collection $heldSessions, Collection $attendanceRecords, Collection $activeRequiredAssignments): array
+    protected static function evaluateHybridProgress(Collection $heldSessions, Collection $attendanceRecords, Collection $activeRequiredAssignments, Collection $submissions): array
     {
         $attendanceProgress = self::evaluateAttendanceProgress($heldSessions, $attendanceRecords);
-        $assignmentEvidenceSummary = self::formatAssignmentEvidenceSummary($activeRequiredAssignments);
+        $submissionProgress = self::evaluateSubmissionEvidence($activeRequiredAssignments, $submissions, 'Hybrid (Submission Evidence)');
 
-        if (($attendanceProgress['has_attendance_evidence'] ?? false) !== true) {
-            return self::evaluateNotEvaluableProgress(
-                'Hybrid (Attendance Evidence Only)',
-                $assignmentEvidenceSummary.' Attendance evidence is not yet available for this student, and hybrid sections cannot be marked satisfied by this preview.',
-            );
+        if ($submissionProgress['progress_status'] === 'not_evaluable') {
+            return [
+                'progress_status' => 'not_evaluable',
+                'progress_basis_used' => 'Hybrid',
+                'evidence_summary' => 'Attendance preview: '.$attendanceProgress['evidence_summary'].' Submission preview: '.$submissionProgress['evidence_summary'].' Hybrid sections cannot be satisfied without both evidence streams.',
+                'last_activity_date' => self::maxCarbon($attendanceProgress['last_activity_date'] ?? null, $submissionProgress['last_activity_date'] ?? null),
+            ];
+        }
+
+        if (in_array($attendanceProgress['progress_status'], ['needs_attention'], true)
+            || in_array($submissionProgress['progress_status'], ['needs_attention'], true)) {
+            return [
+                'progress_status' => 'needs_attention',
+                'progress_basis_used' => 'Hybrid',
+                'evidence_summary' => 'Attendance preview: '.$attendanceProgress['evidence_summary'].' Submission preview: '.$submissionProgress['evidence_summary'],
+                'last_activity_date' => self::maxCarbon($attendanceProgress['last_activity_date'] ?? null, $submissionProgress['last_activity_date'] ?? null),
+            ];
+        }
+
+        if ($attendanceProgress['progress_status'] === 'satisfied' && $submissionProgress['progress_status'] === 'satisfied') {
+            return [
+                'progress_status' => 'satisfied',
+                'progress_basis_used' => 'Hybrid',
+                'evidence_summary' => 'Attendance preview: '.$attendanceProgress['evidence_summary'].' Submission preview: '.$submissionProgress['evidence_summary'],
+                'last_activity_date' => self::maxCarbon($attendanceProgress['last_activity_date'] ?? null, $submissionProgress['last_activity_date'] ?? null),
+            ];
+        }
+
+        if ($attendanceProgress['progress_status'] === 'not_started' && $submissionProgress['progress_status'] === 'not_started') {
+            return [
+                'progress_status' => 'not_started',
+                'progress_basis_used' => 'Hybrid',
+                'evidence_summary' => 'Attendance preview: '.$attendanceProgress['evidence_summary'].' Submission preview: '.$submissionProgress['evidence_summary'],
+                'last_activity_date' => self::maxCarbon($attendanceProgress['last_activity_date'] ?? null, $submissionProgress['last_activity_date'] ?? null),
+            ];
         }
 
         return [
             'progress_status' => 'in_progress',
-            'progress_basis_used' => 'Hybrid (Attendance Evidence Only)',
-            'evidence_summary' => 'Attendance preview: '.$attendanceProgress['evidence_summary'].' '.$assignmentEvidenceSummary.' Hybrid sections cannot be marked satisfied by this preview.',
-            'last_activity_date' => $attendanceProgress['last_activity_date'],
+            'progress_basis_used' => 'Hybrid',
+            'evidence_summary' => 'Attendance preview: '.$attendanceProgress['evidence_summary'].' Submission preview: '.$submissionProgress['evidence_summary'].' Hybrid sections remain conservative until both evidence streams are satisfied.',
+            'last_activity_date' => self::maxCarbon($attendanceProgress['last_activity_date'] ?? null, $submissionProgress['last_activity_date'] ?? null),
         ];
     }
 
-    protected static function formatAssignmentEvidenceSummary(Collection $activeRequiredAssignments): string
+    /**
+     * @return array<string, mixed>
+     */
+    protected static function evaluateSubmissionEvidence(Collection $activeRequiredAssignments, Collection $submissions, string $basisLabel): array
     {
         $activeRequiredAssignmentCount = $activeRequiredAssignments->count();
 
         if ($activeRequiredAssignmentCount === 0) {
-            return 'No active required assignments are defined yet for this section.';
+            return self::evaluateNotEvaluableProgress(
+                $basisLabel,
+                'No active required assignments are defined yet for this section.',
+            );
         }
 
-        return "{$activeRequiredAssignmentCount} active required section assignment(s) exist, but student submission evidence is not built yet.";
+        $submissionsByAssignmentId = $submissions
+            ->filter(fn (StudentSectionSubmission $submission): bool => $submission->section_assignment_id !== null)
+            ->groupBy('section_assignment_id');
+
+        $counts = [
+            StudentSectionSubmission::STATUS_ACCEPTED => 0,
+            StudentSectionSubmission::STATUS_WAIVED => 0,
+            StudentSectionSubmission::STATUS_SUBMITTED => 0,
+            StudentSectionSubmission::STATUS_REVISION_NEEDED => 0,
+            StudentSectionSubmission::STATUS_REJECTED => 0,
+            StudentSectionSubmission::STATUS_NOT_STARTED => 0,
+            'archived_only' => 0,
+            'missing' => 0,
+        ];
+
+        $lastActivityDate = null;
+
+        foreach ($activeRequiredAssignments as $assignment) {
+            $representativeSubmission = self::resolveRepresentativeSubmission(collect($submissionsByAssignmentId->get($assignment->id, [])));
+
+            if ($representativeSubmission === null) {
+                $counts['missing']++;
+
+                continue;
+            }
+
+            if ($representativeSubmission->status === StudentSectionSubmission::STATUS_ARCHIVED) {
+                $counts['archived_only']++;
+
+                continue;
+            }
+
+            $counts[$representativeSubmission->status] = ($counts[$representativeSubmission->status] ?? 0) + 1;
+            $lastActivityDate = self::maxCarbon($lastActivityDate, self::resolveSubmissionActivityDate($representativeSubmission));
+        }
+
+        $startedCount = $counts[StudentSectionSubmission::STATUS_ACCEPTED]
+            + $counts[StudentSectionSubmission::STATUS_WAIVED]
+            + $counts[StudentSectionSubmission::STATUS_SUBMITTED]
+            + $counts[StudentSectionSubmission::STATUS_REVISION_NEEDED]
+            + $counts[StudentSectionSubmission::STATUS_REJECTED];
+
+        $notStartedCount = $counts[StudentSectionSubmission::STATUS_NOT_STARTED]
+            + $counts['missing'];
+
+        $evidenceSummary = implode(' · ', [
+            "Required Assignments: {$activeRequiredAssignmentCount}",
+            'Accepted: '.$counts[StudentSectionSubmission::STATUS_ACCEPTED],
+            'Waived: '.$counts[StudentSectionSubmission::STATUS_WAIVED],
+            'Submitted: '.$counts[StudentSectionSubmission::STATUS_SUBMITTED],
+            'Revision Needed: '.$counts[StudentSectionSubmission::STATUS_REVISION_NEEDED],
+            'Rejected: '.$counts[StudentSectionSubmission::STATUS_REJECTED],
+            'Not Started: '.$notStartedCount,
+            'Archived Only: '.$counts['archived_only'],
+        ]);
+
+        if (($counts['archived_only'] > 0) && $startedCount === 0 && $notStartedCount === 0) {
+            return self::evaluateNotEvaluableProgress(
+                $basisLabel,
+                $evidenceSummary.'. Only archived submission evidence exists for this student.',
+            );
+        }
+
+        if (($counts[StudentSectionSubmission::STATUS_ACCEPTED] + $counts[StudentSectionSubmission::STATUS_WAIVED]) === $activeRequiredAssignmentCount) {
+            return [
+                'progress_status' => 'satisfied',
+                'progress_basis_used' => $basisLabel,
+                'evidence_summary' => $evidenceSummary.'. All active required assignments are accepted or waived.',
+                'last_activity_date' => $lastActivityDate,
+            ];
+        }
+
+        if ($counts[StudentSectionSubmission::STATUS_REVISION_NEEDED] > 0 || $counts[StudentSectionSubmission::STATUS_REJECTED] > 0) {
+            return [
+                'progress_status' => 'needs_attention',
+                'progress_basis_used' => $basisLabel,
+                'evidence_summary' => $evidenceSummary.'. At least one required assignment needs revision or was rejected.',
+                'last_activity_date' => $lastActivityDate,
+            ];
+        }
+
+        if ($counts[StudentSectionSubmission::STATUS_SUBMITTED] > 0 || $counts[StudentSectionSubmission::STATUS_ACCEPTED] > 0 || $counts[StudentSectionSubmission::STATUS_WAIVED] > 0) {
+            return [
+                'progress_status' => 'in_progress',
+                'progress_basis_used' => $basisLabel,
+                'evidence_summary' => $evidenceSummary.'. Submission evidence exists, but not every required assignment is accepted or waived yet.',
+                'last_activity_date' => $lastActivityDate,
+            ];
+        }
+
+        if ($startedCount === 0) {
+            return [
+                'progress_status' => 'not_started',
+                'progress_basis_used' => $basisLabel,
+                'evidence_summary' => $evidenceSummary.'. No required assignment has been started yet.',
+                'last_activity_date' => $lastActivityDate,
+            ];
+        }
+
+        return [
+            'progress_status' => 'in_progress',
+            'progress_basis_used' => $basisLabel,
+            'evidence_summary' => $evidenceSummary.'. Required submission work has begun but is not yet fully satisfied.',
+            'last_activity_date' => $lastActivityDate,
+        ];
     }
 
     /**
@@ -536,6 +710,23 @@ class SectionProgressPreview
         return self::sortAttemptsOrRecordsByRecency($attempts)->first();
     }
 
+    protected static function resolveRepresentativeSubmission(Collection $submissions): ?StudentSectionSubmission
+    {
+        if ($submissions->isEmpty()) {
+            return null;
+        }
+
+        $nonArchivedSubmissions = $submissions
+            ->filter(fn (StudentSectionSubmission $submission): bool => $submission->status !== StudentSectionSubmission::STATUS_ARCHIVED)
+            ->values();
+
+        if ($nonArchivedSubmissions->isNotEmpty()) {
+            return self::sortAttemptsOrRecordsByRecency($nonArchivedSubmissions)->first();
+        }
+
+        return self::sortAttemptsOrRecordsByRecency($submissions)->first();
+    }
+
     protected static function resolveAttendanceActivityDate(AttendanceRecord $record): ?Carbon
     {
         return self::firstCarbonValue([
@@ -553,6 +744,16 @@ class SectionProgressPreview
             $attempt->submitted_at,
             $attempt->updated_at,
             $attempt->created_at,
+        ]);
+    }
+
+    protected static function resolveSubmissionActivityDate(StudentSectionSubmission $submission): ?Carbon
+    {
+        return self::firstCarbonValue([
+            $submission->reviewed_at,
+            $submission->submitted_at,
+            $submission->updated_at,
+            $submission->created_at,
         ]);
     }
 

@@ -172,6 +172,11 @@ class Institution extends Model
         return $this->hasMany(StudentMasterAssessmentAttempt::class);
     }
 
+    public function studentSectionSubmissions(): HasMany
+    {
+        return $this->hasMany(StudentSectionSubmission::class);
+    }
+
     public function catalogPages()
     {
         return $this->hasMany(CatalogPage::class);

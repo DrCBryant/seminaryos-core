@@ -112,6 +112,7 @@ class CourseOfferingsTable
                     ->options(CourseOffering::PROGRESS_BASIS_OPTIONS),
             ])
             ->recordActions([
+                CourseOfferingResource::generateSubmissionChecklistAction(),
                 CourseOfferingResource::sectionProgressAction(),
                 CourseOfferingResource::rosterAction(),
                 EditAction::make(),

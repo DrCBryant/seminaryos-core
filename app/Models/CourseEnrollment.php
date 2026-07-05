@@ -72,4 +72,9 @@ class CourseEnrollment extends BaseModel
     {
         return $this->hasMany(StudentMasterAssessmentAttempt::class);
     }
+
+    public function studentSectionSubmissions(): HasMany
+    {
+        return $this->hasMany(StudentSectionSubmission::class);
+    }
 }

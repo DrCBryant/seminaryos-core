@@ -7,6 +7,7 @@ use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SectionAssignment extends BaseModel
 {
@@ -115,6 +116,11 @@ class SectionAssignment extends BaseModel
     public function courseOffering(): BelongsTo
     {
         return $this->belongsTo(CourseOffering::class);
+    }
+
+    public function studentSectionSubmissions(): HasMany
+    {
+        return $this->hasMany(StudentSectionSubmission::class);
     }
 
     public function scopeActive(Builder $query): Builder
