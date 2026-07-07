@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\AcademicTerms\Schemas;
 
+use App\Models\AcademicTerm;
 use App\Models\Institution;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -41,14 +42,7 @@ class AcademicTermForm
                                     ->placeholder('2026-2027'),
                                 Select::make('term_type')
                                     ->label('Term type')
-                                    ->options([
-                                        'fall' => 'Fall',
-                                        'spring' => 'Spring',
-                                        'summer' => 'Summer',
-                                        'winter' => 'Winter',
-                                        'intensive' => 'Intensive',
-                                        'custom' => 'Custom',
-                                    ])
+                                    ->options(AcademicTerm::termTypeOptions())
                                     ->required(),
                                 Select::make('status')
                                     ->options([

@@ -55,14 +55,7 @@ class AcademicTermsTable
                         ->pluck('academic_year', 'academic_year')
                         ->all()),
                 SelectFilter::make('term_type')
-                    ->options([
-                        'fall' => 'Fall',
-                        'spring' => 'Spring',
-                        'summer' => 'Summer',
-                        'winter' => 'Winter',
-                        'intensive' => 'Intensive',
-                        'custom' => 'Custom',
-                    ]),
+                    ->options(AcademicTerm::termTypeOptions()),
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',

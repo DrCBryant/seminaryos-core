@@ -227,7 +227,7 @@ class GuardedCourseOfferingCompletionTest extends TestCase
             'name' => 'Fall '.random_int(2026, 2035),
             'code' => 'FALL-'.Str::upper(Str::random(4)),
             'academic_year' => '2026-2027',
-            'term_type' => 'semester',
+            'term_type' => 'fall',
             'start_date' => '2026-08-15',
             'end_date' => '2026-12-15',
             'status' => 'active',

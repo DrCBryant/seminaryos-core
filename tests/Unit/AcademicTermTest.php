@@ -23,13 +23,26 @@ class AcademicTermTest extends TestCase
             'name' => 'Fall Semester',
             'code' => 'FALL-2026',
             'academic_year' => '2026-2027',
-            'term_type' => 'semester',
+            'term_type' => 'fall',
             'start_date' => '2026-08-15',
             'end_date' => '2026-12-15',
             'status' => 'active',
         ]);
 
         $this->assertSame('Fall Semester (2026-2027)', $term->display_label);
+    }
+
+    public function test_it_exposes_documented_term_type_options(): void
+    {
+        $this->assertSame([
+            'fall' => 'Fall',
+            'spring' => 'Spring',
+            'summer' => 'Summer',
+            'winter' => 'Winter',
+            'intensive' => 'Intensive',
+            'module' => 'Module',
+            'custom' => 'Custom',
+        ], AcademicTerm::termTypeOptions());
     }
 
     public function test_it_orders_terms_for_selection_by_academic_year_desc_then_start_date_asc(): void
@@ -71,7 +84,7 @@ class AcademicTermTest extends TestCase
             'name' => $name,
             'code' => Str::upper(Str::slug($name, '-')).'-'.Str::replace('-', '', $academicYear),
             'academic_year' => $academicYear,
-            'term_type' => 'semester',
+            'term_type' => 'fall',
             'start_date' => $startDate,
             'end_date' => Carbon::parse($startDate)->addMonths(4)->toDateString(),
             'status' => 'active',

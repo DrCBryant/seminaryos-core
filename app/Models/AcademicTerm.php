@@ -13,6 +13,16 @@ class AcademicTerm extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const TERM_TYPE_OPTIONS = [
+        'fall' => 'Fall',
+        'spring' => 'Spring',
+        'summer' => 'Summer',
+        'winter' => 'Winter',
+        'intensive' => 'Intensive',
+        'module' => 'Module',
+        'custom' => 'Custom',
+    ];
+
     protected $fillable = [
         'institution_id',
         'uuid',
@@ -34,6 +44,11 @@ class AcademicTerm extends BaseModel
         'registration_start_date' => 'date',
         'registration_end_date' => 'date',
     ];
+
+    public static function termTypeOptions(): array
+    {
+        return self::TERM_TYPE_OPTIONS;
+    }
 
     public function getDisplayLabelAttribute(): string
     {

@@ -14,6 +14,7 @@
 - Current usage is mixed: the Academic Term Filament form and table filter present registrar-style term names such as `fall`, `spring`, `summer`, `winter`, `intensive`, and `custom`, while tests still create terms with `semester`.
 - Near-term architectural rule: `term_type` should describe the registrar/calendar category of a specific term record, not the broader academic calendar system. Prefer concrete term labels such as `fall` or `spring` instead of structural labels such as `semester`.
 - Canonical near-term vocabulary for documentation and future alignment is: `fall`, `spring`, `summer`, `winter`, `intensive`, `module`, and `custom`.
+- Filament `term_type` options should be sourced from [`AcademicTerm`](app/Models/AcademicTerm.php) rather than duplicated in resource classes.
 - Acceptable values remain simple strings for now. Do not introduce a PHP enum, schema constraint, or data rewrite until the vocabulary is stable enough to justify stricter typing and reporting rules.
 
 ### Known Academic Terms Follow-ups
