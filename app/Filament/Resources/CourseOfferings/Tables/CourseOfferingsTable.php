@@ -115,6 +115,7 @@ class CourseOfferingsTable
                 CourseOfferingResource::generateManualCompletionChecklistAction(),
                 CourseOfferingResource::generateSubmissionChecklistAction(),
                 CourseOfferingResource::sectionProgressAction(),
+                CourseOfferingResource::completionReviewAction(),
                 CourseOfferingResource::rosterAction(),
                 EditAction::make(),
             ])

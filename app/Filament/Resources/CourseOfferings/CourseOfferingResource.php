@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CourseOfferings;
 use App\Filament\Resources\CourseOfferings\Pages\CreateCourseOffering;
 use App\Filament\Resources\CourseOfferings\Pages\EditCourseOffering;
 use App\Filament\Resources\CourseOfferings\Pages\ListCourseOfferings;
+use App\Filament\Resources\CourseOfferings\Pages\ViewCourseOfferingCompletionReview;
 use App\Filament\Resources\CourseOfferings\Pages\ViewCourseOfferingRoster;
 use App\Filament\Resources\CourseOfferings\RelationManagers\AttendanceSessionsRelationManager;
 use App\Filament\Resources\CourseOfferings\RelationManagers\CourseEnrollmentsRelationManager;
@@ -77,6 +78,15 @@ class CourseOfferingResource extends Resource
             ->color('gray')
             ->url(fn (CourseOffering $record): string => static::getUrl('roster', ['record' => $record]))
             ->openUrlInNewTab();
+    }
+
+    public static function completionReviewAction(): Action
+    {
+        return Action::make('reviewCompletion')
+            ->label('Review Completion')
+            ->icon(Heroicon::OutlinedCheckBadge)
+            ->color('gray')
+            ->url(fn (CourseOffering $record): string => static::getUrl('completion-review', ['record' => $record]));
     }
 
     public static function sectionProgressAction(): Action
@@ -161,6 +171,7 @@ class CourseOfferingResource extends Resource
             'create' => CreateCourseOffering::route('/create'),
             'edit' => EditCourseOffering::route('/{record}/edit'),
             'roster' => ViewCourseOfferingRoster::route('/{record}/roster'),
+            'completion-review' => ViewCourseOfferingCompletionReview::route('/{record}/completion-review'),
         ];
     }
 }

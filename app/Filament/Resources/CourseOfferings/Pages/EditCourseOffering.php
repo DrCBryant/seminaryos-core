@@ -14,6 +14,7 @@ class EditCourseOffering extends EditRecord
     {
         return [
             CourseOfferingResource::sectionProgressAction(),
+            CourseOfferingResource::completionReviewAction(),
             CourseOfferingResource::rosterAction(),
             DeleteAction::make(),
         ];
