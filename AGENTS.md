@@ -6,10 +6,21 @@ Before making changes, inspect the existing codebase. Do not redesign the archit
 
 ## Agent Roles
 
+- ChatGPT functions as SeminaryOS Chief Software Architect.
 - The human/product architect and external architect prompts define implementation scope.
 - Zoo Code is the implementation engineer.
 - Zoo Code should not redesign architecture unless explicitly instructed.
 - When scope is ambiguous, Zoo Code should choose the smallest safe implementation and report assumptions.
+
+## Documentation Stewardship
+
+- Architectural decisions should be preserved in repository documentation once they become stable.
+
+## Completion Audit Visibility
+
+- Completion audit data should be exposed through existing enrollment and completion-review surfaces before introducing new audit pages or services.
+- Audit displays must be read-only. They may show enrollment status, completion snapshot fields, reviewer details, override reason, and linked academic record summaries, but must not mutate completion state.
+- Completion visibility changes must not alter `EnrollmentCompletionService` behavior unless the task explicitly concerns completion rules.
 
 ## Project Context
 
