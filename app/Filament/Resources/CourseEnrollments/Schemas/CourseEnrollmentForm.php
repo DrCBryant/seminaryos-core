@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\CourseEnrollments\Schemas;
 
+use App\Models\AcademicRecord;
 use App\Models\AcademicTerm;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\CourseOffering;
 use App\Models\Institution;
 use App\Models\Student;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -100,6 +103,176 @@ class CourseEnrollmentForm
                         Textarea::make('notes')
                             ->rows(4),
                     ]),
+                Section::make('Completion Audit')
+                    ->visible(fn (?CourseEnrollment $record): bool => $record !== null)
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('status')
+                                    ->label('Enrollment status')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?string $state): string => self::formatValue(filled($state) ? str($state)->replace('_', ' ')->title()->toString() : null)),
+                                TextInput::make('completed_at')
+                                    ->label('Completed at')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn ($state): string => self::formatDateTimeValue($state)),
+                                TextInput::make('completion_progress_basis')
+                                    ->label('Completion progress basis')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?string $state): string => self::formatValue($state)),
+                                TextInput::make('completion_progress_status')
+                                    ->label('Completion progress status')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?string $state): string => self::formatValue(filled($state) ? str($state)->replace('_', ' ')->title()->toString() : null)),
+                                TextInput::make('completion_reviewed_at')
+                                    ->label('Reviewed at')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn ($state): string => self::formatDateTimeValue($state)),
+                                TextInput::make('completion_reviewed_by_user')
+                                    ->label('Reviewed by')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::reviewerSummary($record)),
+                            ]),
+                        Textarea::make('completion_evidence_summary')
+                            ->label('Completion evidence summary')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->rows(3)
+                            ->formatStateUsing(fn (?string $state): string => self::formatValue($state)),
+                        Textarea::make('completion_override_reason')
+                            ->label('Completion override reason')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->rows(3)
+                            ->formatStateUsing(fn (?string $state): string => self::formatValue($state)),
+                        Placeholder::make('academic_record_link_status')
+                            ->label('Academic record')
+                            ->content(fn (?CourseEnrollment $record): string => self::academicRecordLinkStatus($record)),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('academic_record_course')
+                                    ->label('AcademicRecord course')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::academicRecordCourseSummary($record)),
+                                TextInput::make('academic_record_final_grade')
+                                    ->label('AcademicRecord final grade')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::academicRecordValue($record, 'final_grade')),
+                                TextInput::make('academic_record_grade_label')
+                                    ->label('AcademicRecord grade label')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::academicRecordValue($record, 'grade_label')),
+                                TextInput::make('academic_record_status')
+                                    ->label('AcademicRecord status')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::academicRecordValue($record, 'status', true)),
+                                TextInput::make('academic_record_credits_attempted')
+                                    ->label('AcademicRecord credits attempted')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::academicRecordValue($record, 'credits_attempted')),
+                                TextInput::make('academic_record_credits_earned')
+                                    ->label('AcademicRecord credits earned')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::academicRecordValue($record, 'credits_earned')),
+                                TextInput::make('academic_record_completed_at')
+                                    ->label('AcademicRecord completed at')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::academicRecordCompletedAt($record)),
+                            ]),
+                    ]),
             ]);
+    }
+
+    protected static function reviewerSummary(?CourseEnrollment $record): string
+    {
+        if (! $record) {
+            return '—';
+        }
+
+        $record->loadMissing('completionReviewedByUser');
+
+        $reviewer = $record->completionReviewedByUser;
+
+        if (! $reviewer) {
+            return '—';
+        }
+
+        return trim(collect([$reviewer->name, $reviewer->email])->filter()->implode(' · ')) ?: '—';
+    }
+
+    protected static function academicRecordLinkStatus(?CourseEnrollment $record): string
+    {
+        return self::resolveAcademicRecord($record)
+            ? 'AcademicRecord linked to this enrollment.'
+            : 'No AcademicRecord is linked to this enrollment yet.';
+    }
+
+    protected static function academicRecordCourseSummary(?CourseEnrollment $record): string
+    {
+        $academicRecord = self::resolveAcademicRecord($record);
+
+        if (! $academicRecord) {
+            return '—';
+        }
+
+        return trim(collect([$academicRecord->course_code, $academicRecord->course_title])->filter()->implode(' — ')) ?: '—';
+    }
+
+    protected static function academicRecordValue(?CourseEnrollment $record, string $attribute, bool $titleCase = false): string
+    {
+        $academicRecord = self::resolveAcademicRecord($record);
+
+        if (! $academicRecord) {
+            return '—';
+        }
+
+        $value = $academicRecord->{$attribute};
+
+        if ($titleCase && filled($value)) {
+            return str((string) $value)->replace('_', ' ')->title()->toString();
+        }
+
+        return self::formatValue($value);
+    }
+
+    protected static function academicRecordCompletedAt(?CourseEnrollment $record): string
+    {
+        $academicRecord = self::resolveAcademicRecord($record);
+
+        return self::formatValue($academicRecord?->completed_at?->format('M j, Y'));
+    }
+
+    protected static function resolveAcademicRecord(?CourseEnrollment $record): ?AcademicRecord
+    {
+        if (! $record) {
+            return null;
+        }
+
+        $record->loadMissing('academicRecord');
+
+        return $record->academicRecord;
+    }
+
+    protected static function formatDateTimeValue(mixed $value): string
+    {
+        return $value?->format('M j, Y g:i A') ?? '—';
+    }
+
+    protected static function formatValue(mixed $value): string
+    {
+        return filled($value) ? (string) $value : '—';
     }
 }

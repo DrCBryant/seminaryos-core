@@ -73,6 +73,8 @@ class ViewCourseOfferingCompletionReview extends Page
             'course',
             'academicTerm',
             'courseEnrollments.student' => fn ($query) => $query->withTrashed(),
+            'courseEnrollments.completionReviewedByUser',
+            'courseEnrollments.academicRecord',
         ]);
 
         $courseOffering->loadMissing(SectionProgressEvaluator::courseOfferingRelations());
@@ -532,6 +534,10 @@ class ViewCourseOfferingCompletionReview extends Page
                     'last_activity_date' => $evaluation['last_activity_date'] ?? null,
                     'readiness' => $readiness,
                     'requires_override' => $this->requiresOverride($enrollment, $progressStatus),
+                    'completion_snapshot_status' => $this->completionSnapshotStatus($enrollment),
+                    'completion_reviewed_at' => $enrollment->completion_reviewed_at,
+                    'completion_reviewed_by' => $this->completionReviewerSummary($enrollment),
+                    'academic_record_linked' => $enrollment->academicRecord !== null,
                     'edit_url' => CourseEnrollmentResource::getUrl('edit', ['record' => $enrollment]),
                 ];
             })
@@ -641,5 +647,25 @@ class ViewCourseOfferingCompletionReview extends Page
         }
 
         return in_array($progressStatus, ['not_started', 'in_progress', 'needs_attention', 'not_evaluable'], true);
+    }
+
+    protected function completionSnapshotStatus(CourseEnrollment $enrollment): string
+    {
+        $hasSnapshot = filled($enrollment->completion_progress_basis)
+            || filled($enrollment->completion_progress_status)
+            || filled($enrollment->completion_evidence_summary);
+
+        return $hasSnapshot ? 'Snapshot exists' : 'Snapshot missing';
+    }
+
+    protected function completionReviewerSummary(CourseEnrollment $enrollment): string
+    {
+        $reviewer = $enrollment->completionReviewedByUser;
+
+        if (! $reviewer) {
+            return '—';
+        }
+
+        return trim(collect([$reviewer->name, $reviewer->email])->filter()->implode(' · ')) ?: '—';
     }
 }

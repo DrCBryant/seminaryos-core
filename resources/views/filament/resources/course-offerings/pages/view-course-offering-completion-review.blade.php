@@ -274,6 +274,35 @@
             text-decoration: underline;
         }
 
+        .completion-review-audit-list {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .completion-review-audit-item {
+            padding: 0.55rem 0.65rem;
+            border-radius: 0.7rem;
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+        }
+
+        .completion-review-audit-label {
+            display: block;
+            margin-bottom: 0.18rem;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--review-muted);
+        }
+
+        .completion-review-audit-value {
+            margin: 0;
+            color: var(--review-ink);
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+
         .completion-review-empty {
             margin-top: 1rem;
             padding: 1rem 1.1rem;
@@ -391,6 +420,7 @@
                                 <th>Evidence Summary</th>
                                 <th>Last Activity</th>
                                 <th>Completion Readiness</th>
+                                <th>Completion Audit</th>
                                 <th>Recommended Action</th>
                                 <th>Enrollment</th>
                             </tr>
@@ -418,6 +448,30 @@
                                         </span>
                                         @if ($review['requires_override'])
                                             <div class="completion-review-secondary" style="margin-top: 0.45rem;">Override reason will be required during completion.</div>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($review['readiness'] === 'already_completed')
+                                            <div class="completion-review-audit-list">
+                                                <div class="completion-review-audit-item">
+                                                    <span class="completion-review-audit-label">Snapshot</span>
+                                                    <p class="completion-review-audit-value">{{ $review['completion_snapshot_status'] }}</p>
+                                                </div>
+                                                <div class="completion-review-audit-item">
+                                                    <span class="completion-review-audit-label">Reviewed</span>
+                                                    <p class="completion-review-audit-value">{{ $this->formatDateTime($review['completion_reviewed_at']) }}</p>
+                                                </div>
+                                                <div class="completion-review-audit-item">
+                                                    <span class="completion-review-audit-label">Reviewer</span>
+                                                    <p class="completion-review-audit-value">{{ $review['completion_reviewed_by'] }}</p>
+                                                </div>
+                                                <div class="completion-review-audit-item">
+                                                    <span class="completion-review-audit-label">AcademicRecord</span>
+                                                    <p class="completion-review-audit-value">{{ $review['academic_record_linked'] ? 'Linked' : 'Missing' }}</p>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="completion-review-secondary">Audit summary appears here after official completion.</div>
                                         @endif
                                     </td>
                                     <td>

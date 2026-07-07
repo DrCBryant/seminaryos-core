@@ -67,8 +67,12 @@ class GuardedCourseOfferingCompletionTest extends TestCase
         $this->assertNull($context['enrollment']->completion_override_reason);
         $this->assertSame($context['user']->id, $context['enrollment']->completion_reviewed_by_user_id);
         $this->assertNotNull($context['enrollment']->completion_reviewed_at);
+        $this->assertNotNull($context['enrollment']->academicRecord);
 
         $this->assertDatabaseCount('academic_records', 1);
+        $this->assertSame(1, AcademicRecord::query()
+            ->where('course_enrollment_id', $context['enrollment']->id)
+            ->count());
 
         $record = AcademicRecord::query()->firstOrFail();
 
