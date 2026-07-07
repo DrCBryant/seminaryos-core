@@ -72,12 +72,29 @@
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         }
 
+        .completion-review-grid--metrics {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+
         .completion-review-item,
         .completion-review-stat {
             padding: 1rem 1.1rem;
             border: 1px solid var(--review-line);
             border-radius: 0.85rem;
             background: #fff;
+        }
+
+        .completion-review-stat {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .completion-review-stat::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: var(--review-stat-accent, var(--review-accent));
         }
 
         .completion-review-label {
@@ -182,12 +199,69 @@
         .completion-review-badge {
             display: inline-flex;
             align-items: center;
+            gap: 0.45rem;
             border-radius: 999px;
             padding: 0.35rem 0.75rem;
             font-size: 0.8rem;
             font-weight: 700;
             line-height: 1.2;
             white-space: nowrap;
+            border: 1px solid transparent;
+        }
+
+        .completion-review-badge::before {
+            content: '';
+            width: 0.45rem;
+            height: 0.45rem;
+            border-radius: 999px;
+            background: currentColor;
+            opacity: 0.75;
+        }
+
+        .completion-review-guidance-list {
+            margin: 0;
+            padding-left: 1.15rem;
+            color: #1e3a8a;
+        }
+
+        .completion-review-guidance-list li + li {
+            margin-top: 0.4rem;
+        }
+
+        .completion-review-next-step {
+            margin-top: 0.55rem;
+            padding: 0.7rem 0.8rem;
+            border-radius: 0.75rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+
+        .completion-review-next-step-label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--review-muted);
+        }
+
+        .completion-review-next-step-copy {
+            margin: 0;
+            color: var(--review-ink);
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+
+        .completion-review-enrollment-cell {
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        .completion-review-link-note {
+            color: var(--review-muted);
+            font-size: 0.82rem;
+            line-height: 1.4;
         }
 
         .completion-review-link {
@@ -272,14 +346,28 @@
                         <p class="completion-review-stat-value">{{ $summary['not_evaluable_count'] }}</p>
                     </div>
                 </div>
+
+                <div class="completion-review-grid completion-review-grid--metrics">
+                    @foreach (['already_completed', 'ready_to_complete', 'override_required', 'not_evaluable', 'not_started', 'in_progress'] as $readinessKey)
+                        <div class="completion-review-stat" style="--review-stat-accent: {{ str($this->readinessBadgeClasses($readinessKey))->after('color: ')->before(';')->toString() }};">
+                            <span class="completion-review-label">{{ $this->readinessCountLabel($readinessKey) }}</span>
+                            <p class="completion-review-stat-value">{{ $summary[$readinessKey . '_count'] ?? 0 }}</p>
+                        </div>
+                    @endforeach
+                </div>
             </header>
         </article>
 
         <section class="completion-review-section">
             <h2 class="completion-review-section-title">Completion review guidance</h2>
-            <p class="completion-review-section-copy">This page is informational only and does not complete enrollments.</p>
+            <p class="completion-review-section-copy">This page is read-only and helps administrators review whether each student appears ready for official enrollment completion.</p>
             <div class="completion-review-callout">
-                Official completion still happens through the existing Complete Enrollment action. If evaluated section progress is non-satisfied or not evaluable, an override reason is still required during completion. Viewing this page does not persist review results and does not modify completion snapshot fields.
+                <ul class="completion-review-guidance-list">
+                    <li>This page is read-only.</li>
+                    <li>It reviews whether each student appears ready for official enrollment completion.</li>
+                    <li>Official completion still happens through the existing Complete Enrollment action.</li>
+                    <li>Non-satisfied or not-evaluable progress requires an override reason during completion.</li>
+                </ul>
             </div>
         </section>
 
@@ -302,6 +390,7 @@
                                 <th>Evidence Summary</th>
                                 <th>Last Activity</th>
                                 <th>Completion Readiness</th>
+                                <th>Recommended Action</th>
                                 <th>Enrollment</th>
                             </tr>
                         </thead>
@@ -331,7 +420,16 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ $review['edit_url'] }}" class="completion-review-link">Open Enrollment</a>
+                                        <div class="completion-review-next-step">
+                                            <span class="completion-review-next-step-label">Next Step</span>
+                                            <p class="completion-review-next-step-copy">{{ $this->nextStepLabel($review['readiness']) }}</p>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="completion-review-enrollment-cell">
+                                            <a href="{{ $review['edit_url'] }}" class="completion-review-link">Open Enrollment</a>
+                                            <div class="completion-review-link-note">Use the enrollment record to access the existing Complete Enrollment workflow.</div>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

@@ -85,20 +85,30 @@ class ViewCourseOfferingCompletionReview extends Page
      */
     public function getSummary(): array
     {
-        $completedEnrollmentCount = collect($this->enrollmentReviews)
+        $reviews = collect($this->enrollmentReviews);
+
+        $completedEnrollmentCount = $reviews
             ->where('readiness', 'already_completed')
             ->count();
 
-        $readyToCompleteCount = collect($this->enrollmentReviews)
+        $readyToCompleteCount = $reviews
             ->where('readiness', 'ready_to_complete')
             ->count();
 
-        $notEvaluableCount = collect($this->enrollmentReviews)
+        $overrideRequiredCount = $reviews
+            ->where('readiness', 'override_required')
+            ->count();
+
+        $notEvaluableCount = $reviews
             ->where('readiness', 'not_evaluable')
             ->count();
 
-        $needsOverrideCount = collect($this->enrollmentReviews)
-            ->where('requires_override', true)
+        $notStartedCount = $reviews
+            ->where('readiness', 'not_started')
+            ->count();
+
+        $inProgressCount = $reviews
+            ->where('readiness', 'in_progress')
             ->count();
 
         return [
@@ -111,9 +121,13 @@ class ViewCourseOfferingCompletionReview extends Page
             'capacity' => $this->courseOffering->capacity === null ? 'Unlimited' : (string) $this->courseOffering->capacity,
             'enrolled_count' => $this->courseOffering->enrolledCount(),
             'completed_enrollment_count' => $completedEnrollmentCount,
+            'already_completed_count' => $completedEnrollmentCount,
             'ready_to_complete_count' => $readyToCompleteCount,
-            'needs_override_count' => $needsOverrideCount,
+            'override_required_count' => $overrideRequiredCount,
+            'needs_override_count' => $overrideRequiredCount,
             'not_evaluable_count' => $notEvaluableCount,
+            'not_started_count' => $notStartedCount,
+            'in_progress_count' => $inProgressCount,
         ];
     }
 
@@ -155,13 +169,39 @@ class ViewCourseOfferingCompletionReview extends Page
     public function readinessBadgeClasses(string $value): string
     {
         return match ($value) {
-            'already_completed' => 'background: #e0f2fe; color: #075985;',
-            'ready_to_complete' => 'background: #dcfce7; color: #166534;',
-            'override_required' => 'background: #fee2e2; color: #991b1b;',
-            'not_evaluable' => 'background: #fef3c7; color: #92400e;',
-            'not_started' => 'background: #e5e7eb; color: #374151;',
-            'in_progress' => 'background: #dbeafe; color: #1d4ed8;',
-            default => 'background: #f3f4f6; color: #111827;',
+            'already_completed' => 'background: #ecfeff; color: #155e75; border-color: #a5f3fc;',
+            'ready_to_complete' => 'background: #dcfce7; color: #166534; border-color: #86efac;',
+            'override_required' => 'background: #fee2e2; color: #991b1b; border-color: #fca5a5;',
+            'not_evaluable' => 'background: #fef3c7; color: #92400e; border-color: #fcd34d;',
+            'not_started' => 'background: #e5e7eb; color: #374151; border-color: #d1d5db;',
+            'in_progress' => 'background: #dbeafe; color: #1d4ed8; border-color: #93c5fd;',
+            default => 'background: #f3f4f6; color: #111827; border-color: #d1d5db;',
+        };
+    }
+
+    public function readinessCountLabel(string $value): string
+    {
+        return match ($value) {
+            'already_completed' => 'Already Completed',
+            'ready_to_complete' => 'Ready to Complete',
+            'override_required' => 'Override Required',
+            'not_evaluable' => 'Not Evaluable',
+            'not_started' => 'Not Started',
+            'in_progress' => 'In Progress',
+            default => $this->formatReadinessLabel($value),
+        };
+    }
+
+    public function nextStepLabel(string $value): string
+    {
+        return match ($value) {
+            'already_completed' => 'No action needed.',
+            'ready_to_complete' => 'Open enrollment and run Complete Enrollment.',
+            'override_required' => 'Review evidence. Completion will require an override reason.',
+            'not_evaluable' => 'Progress cannot be evaluated yet. Completion will require an override reason.',
+            'not_started' => 'No sufficient progress evidence yet.',
+            'in_progress' => 'Progress evidence exists but is not yet satisfied.',
+            default => 'Review enrollment details before taking action.',
         };
     }
 
