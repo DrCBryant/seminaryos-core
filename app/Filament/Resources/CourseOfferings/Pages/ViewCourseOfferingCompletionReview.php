@@ -8,6 +8,7 @@ use App\Models\CourseEnrollment;
 use App\Models\CourseOffering;
 use App\Support\SectionProgress\SectionProgressEvaluator;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
@@ -71,7 +72,31 @@ class ViewCourseOfferingCompletionReview extends Page
 
     protected function getHeaderActions(): array
     {
+        $summary = $this->getSummary();
+        $hasReadyToCompleteEnrollments = $summary['ready_to_complete_count'] > 0;
+
         return [
+            Action::make('completeReadyEnrollments')
+                ->label('Complete Ready Enrollments')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->disabled(! $hasReadyToCompleteEnrollments)
+                ->tooltip(! $hasReadyToCompleteEnrollments
+                    ? 'No ready_to_complete enrollments are currently eligible for guarded bulk completion.'
+                    : 'Bulk completion is unavailable because the existing official completion workflow requires per-enrollment grade and credit inputs.')
+                ->visible($hasReadyToCompleteEnrollments)
+                ->modalHeading('Complete Ready Enrollments')
+                ->modalDescription('Guarded bulk completion only permits ready_to_complete enrollments and excludes override-required enrollments. This review confirms eligibility counts, but bulk completion remains disabled until a safe grade-entry strategy exists for the existing official completion workflow.')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Close')
+                ->modalContent(fn (): string => $this->bulkCompletionConfirmationSummary())
+                ->action(function (): void {
+                    Notification::make()
+                        ->title('Bulk completion not available')
+                        ->body('Ready enrollments were identified, but the current official completion workflow requires per-enrollment final grade and credit inputs. No enrollments were completed in bulk.')
+                        ->warning()
+                        ->send();
+                }),
             Action::make('edit')
                 ->label('Edit Offering')
                 ->icon('heroicon-o-pencil-square')
@@ -203,6 +228,21 @@ class ViewCourseOfferingCompletionReview extends Page
             'in_progress' => 'Progress evidence exists but is not yet satisfied.',
             default => 'Review enrollment details before taking action.',
         };
+    }
+
+    public function bulkCompletionConfirmationSummary(): string
+    {
+        $reviews = $this->getEnrollmentReviews();
+        $readyCount = $reviews->where('readiness', 'ready_to_complete')->count();
+        $excludedCount = $reviews->count() - $readyCount;
+
+        return implode("\n", [
+            "Ready enrollments that would be completed: {$readyCount}",
+            "Enrollments excluded from bulk completion: {$excludedCount}",
+            'Only ready_to_complete enrollments would ever be included.',
+            'No override completions are included.',
+            'Bulk completion is currently blocked because the official completion workflow requires per-enrollment grade and credit inputs, and this page does not invent or mass-apply grades.',
+        ]);
     }
 
     public function getRecord(): Model

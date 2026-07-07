@@ -2,12 +2,12 @@
 
 namespace App\Filament\Resources\CourseEnrollments\Tables;
 
-use App\Models\AcademicRecord;
 use App\Models\AcademicTerm;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\GradeScale;
 use App\Models\GradeValue;
+use App\Support\Enrollments\EnrollmentCompletionService;
 use App\Support\SectionProgress\SectionProgressEvaluator;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -28,7 +28,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class CourseEnrollmentsTable
 {
@@ -273,53 +272,7 @@ class CourseEnrollmentsTable
                             return;
                         }
 
-                        DB::transaction(function () use ($record, $data, $progressEvaluation): void {
-                            $selectedGradeValue = null;
-
-                            if (filled($data['grade_value_id'] ?? null)) {
-                                $selectedGradeValue = GradeValue::query()
-                                    ->where('institution_id', $record->institution_id)
-                                    ->where('grade_scale_id', $data['grade_scale_id'] ?? null)
-                                    ->find($data['grade_value_id']);
-                            }
-
-                            $finalGrade = $selectedGradeValue?->grade ?? ($data['final_grade'] ?? null);
-
-                            $record->forceFill([
-                                'status' => 'completed',
-                                'final_grade' => $finalGrade,
-                                'completed_at' => $data['completed_at'],
-                                'completion_progress_basis' => $progressEvaluation['progress_basis_raw'],
-                                'completion_progress_status' => $progressEvaluation['progress_status_raw'],
-                                'completion_evidence_summary' => $progressEvaluation['evidence_summary_raw'],
-                                'completion_override_reason' => $progressEvaluation['requires_override'] ? ($data['completion_override_reason'] ?? null) : null,
-                                'completion_reviewed_at' => now(),
-                                'completion_reviewed_by_user_id' => auth()->id(),
-                            ])->save();
-
-                            AcademicRecord::create([
-                                'institution_id' => $record->institution_id,
-                                'student_id' => $record->student_id,
-                                'course_id' => $record->course_id,
-                                'academic_term_id' => $record->academic_term_id,
-                                'course_enrollment_id' => $record->id,
-                                'course_code' => $record->course->code,
-                                'course_title' => $record->course->title,
-                                'credits_attempted' => $data['credits_attempted'],
-                                'credits_earned' => $data['credits_earned'],
-                                'final_grade' => $finalGrade,
-                                'grade_points' => $selectedGradeValue?->grade_points ?? ($data['grade_points'] ?: null),
-                                'grade_scale_id' => $data['grade_scale_id'] ?: null,
-                                'grade_value_id' => $selectedGradeValue?->id,
-                                'grade_label' => $selectedGradeValue?->label,
-                                'earns_credit' => $selectedGradeValue?->earns_credit,
-                                'affects_gpa' => $selectedGradeValue?->affects_gpa,
-                                'is_passing' => $selectedGradeValue?->is_passing,
-                                'status' => 'completed',
-                                'completed_at' => $data['completed_at'],
-                                'notes' => $data['notes'] ?: null,
-                            ]);
-                        });
+                        app(EnrollmentCompletionService::class)->complete($record, $data, $progressEvaluation);
 
                         Notification::make()
                             ->title('Enrollment completed')

@@ -290,7 +290,7 @@
                 <div>
                     <p class="completion-review-eyebrow">{{ $institution?->name ?? 'Institution' }}</p>
                     <h1 class="completion-review-title">{{ $course?->code ?? 'Course' }} — {{ $course?->title ?? $courseOffering->title ?? 'Untitled Course Offering' }}</h1>
-                    <p class="completion-review-subtitle">Read-only completion review for {{ $term?->name ?? 'Academic Term' }} · Section {{ $courseOffering->section_code }}</p>
+                    <p class="completion-review-subtitle">Completion review for {{ $term?->name ?? 'Academic Term' }} · Section {{ $courseOffering->section_code }}</p>
                 </div>
 
                 <div class="completion-review-grid">
@@ -360,13 +360,14 @@
 
         <section class="completion-review-section">
             <h2 class="completion-review-section-title">Completion review guidance</h2>
-            <p class="completion-review-section-copy">This page is read-only and helps administrators review whether each student appears ready for official enrollment completion.</p>
+            <p class="completion-review-section-copy">This page helps administrators review whether each student appears ready for official enrollment completion.</p>
             <div class="completion-review-callout">
                 <ul class="completion-review-guidance-list">
-                    <li>This page is read-only.</li>
+                    <li>Only enrollments evaluated as ready to complete are candidates for guarded bulk completion.</li>
                     <li>It reviews whether each student appears ready for official enrollment completion.</li>
                     <li>Official completion still happens through the existing Complete Enrollment action.</li>
                     <li>Non-satisfied or not-evaluable progress requires an override reason during completion.</li>
+                    <li>No bulk override completion is available.</li>
                 </ul>
             </div>
         </section>
