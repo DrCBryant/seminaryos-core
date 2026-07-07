@@ -108,8 +108,8 @@ class GuardedCourseOfferingCompletionTest extends TestCase
     public function test_submissions_progress_basis_maps_submission_statuses_to_expected_progress_states(): void
     {
         $accepted = $this->createEnrollmentContext(CourseOffering::PROGRESS_BASIS_SUBMISSIONS);
-        $this->createRequiredAssignment($accepted['courseOffering']);
-        $this->createSubmission($accepted['enrollment'], StudentSectionSubmission::STATUS_ACCEPTED);
+        $acceptedAssignment = $this->createRequiredAssignment($accepted['courseOffering']);
+        $this->createSubmission($accepted['enrollment'], StudentSectionSubmission::STATUS_ACCEPTED, $acceptedAssignment);
         $this->assertSame('satisfied', SectionProgressEvaluator::evaluateEnrollment($accepted['enrollment'])['progress_status']);
 
         $submitted = $this->createEnrollmentContext(CourseOffering::PROGRESS_BASIS_SUBMISSIONS);
@@ -135,8 +135,8 @@ class GuardedCourseOfferingCompletionTest extends TestCase
     public function test_master_assessment_progress_basis_maps_attempt_statuses_to_expected_progress_states(): void
     {
         $passed = $this->createEnrollmentContext(CourseOffering::PROGRESS_BASIS_MASTER_ASSESSMENT);
-        $this->createMasterAssessment($passed['courseOffering']);
-        $this->createMasterAssessmentAttempt($passed['enrollment'], StudentMasterAssessmentAttempt::STATUS_PASSED);
+        $passedAssessment = $this->createMasterAssessment($passed['courseOffering']);
+        $this->createMasterAssessmentAttempt($passed['enrollment'], StudentMasterAssessmentAttempt::STATUS_PASSED, $passedAssessment);
         $this->assertSame('satisfied', SectionProgressEvaluator::evaluateEnrollment($passed['enrollment'])['progress_status']);
 
         $submitted = $this->createEnrollmentContext(CourseOffering::PROGRESS_BASIS_MASTER_ASSESSMENT);
@@ -224,6 +224,8 @@ class GuardedCourseOfferingCompletionTest extends TestCase
             'code' => 'FALL-'.Str::upper(Str::random(4)),
             'academic_year' => '2026-2027',
             'term_type' => 'semester',
+            'start_date' => '2026-08-15',
+            'end_date' => '2026-12-15',
             'status' => 'active',
         ]);
 
