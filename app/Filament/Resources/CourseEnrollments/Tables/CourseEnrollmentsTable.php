@@ -28,6 +28,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class CourseEnrollmentsTable
 {
@@ -209,16 +210,6 @@ class CourseEnrollmentsTable
                             ->rows(4),
                     ])
                     ->action(function (CourseEnrollment $record, array $data): void {
-                        if ($record->academicRecord()->exists()) {
-                            Notification::make()
-                                ->title('Academic record already exists')
-                                ->body('This course enrollment already has an academic record. No duplicate record was created.')
-                                ->warning()
-                                ->send();
-
-                            return;
-                        }
-
                         $progressEvaluation = self::progressEvaluationSnapshot($record);
 
                         if ($progressEvaluation['requires_override'] && ! ($data['confirm_override_completion'] ?? false)) {
@@ -241,38 +232,22 @@ class CourseEnrollmentsTable
                             return;
                         }
 
-                        $selectedGradeValue = null;
+                        try {
+                            app(EnrollmentCompletionService::class)->complete($record, $data, $progressEvaluation);
+                        } catch (ValidationException $exception) {
+                            $message = collect($exception->errors())
+                                ->flatten()
+                                ->filter()
+                                ->first() ?? 'The enrollment could not be completed.';
 
-                        if (filled($data['grade_value_id'] ?? null)) {
-                            $selectedGradeValue = GradeValue::query()
-                                ->where('institution_id', $record->institution_id)
-                                ->where('grade_scale_id', $data['grade_scale_id'] ?? null)
-                                ->find($data['grade_value_id']);
-
-                            if (! $selectedGradeValue) {
-                                Notification::make()
-                                    ->title('Selected grade value is invalid')
-                                    ->body('The chosen grade value does not belong to the selected active grade scale for this institution.')
-                                    ->warning()
-                                    ->send();
-
-                                return;
-                            }
-                        }
-
-                        $finalGrade = $selectedGradeValue?->grade ?? ($data['final_grade'] ?? null);
-
-                        if (blank($finalGrade)) {
                             Notification::make()
-                                ->title('Final grade is required')
-                                ->body('Select a grade value or enter a manual final grade to complete the enrollment.')
+                                ->title('Enrollment completion blocked')
+                                ->body((string) $message)
                                 ->warning()
                                 ->send();
 
                             return;
                         }
-
-                        app(EnrollmentCompletionService::class)->complete($record, $data, $progressEvaluation);
 
                         Notification::make()
                             ->title('Enrollment completed')
