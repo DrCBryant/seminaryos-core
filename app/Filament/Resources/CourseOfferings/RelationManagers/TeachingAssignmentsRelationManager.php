@@ -133,8 +133,8 @@ class TeachingAssignmentsRelationManager extends RelationManager
                             ->required(),
                         Select::make('academic_term_id')
                             ->label('Academic term')
-                            ->relationship('academicTerm', 'name', fn ($query) => $query->orderByDesc('academic_year')->orderBy('start_date'))
-                            ->getOptionLabelFromRecordUsing(fn (AcademicTerm $record): string => "{$record->name} ({$record->academic_year})")
+                            ->relationship('academicTerm', 'name', fn ($query) => $query->orderedForSelection())
+                            ->getOptionLabelFromRecordUsing(fn (AcademicTerm $record): string => $record->display_label)
                             ->searchable()
                             ->preload()
                             ->required(),

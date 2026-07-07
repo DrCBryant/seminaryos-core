@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -33,6 +34,18 @@ class AcademicTerm extends BaseModel
         'registration_start_date' => 'date',
         'registration_end_date' => 'date',
     ];
+
+    public function getDisplayLabelAttribute(): string
+    {
+        return "{$this->name} ({$this->academic_year})";
+    }
+
+    public function scopeOrderedForSelection(Builder $query): Builder
+    {
+        return $query
+            ->orderByDesc('academic_year')
+            ->orderBy('start_date');
+    }
 
     public function institution()
     {

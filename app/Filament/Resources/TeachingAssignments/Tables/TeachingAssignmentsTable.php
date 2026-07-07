@@ -58,10 +58,9 @@ class TeachingAssignmentsTable
                 SelectFilter::make('academic_term_id')
                     ->label('Academic term')
                     ->options(fn () => AcademicTerm::query()
-                        ->orderByDesc('academic_year')
-                        ->orderBy('start_date')
+                        ->orderedForSelection()
                         ->get()
-                        ->mapWithKeys(fn (AcademicTerm $term) => [$term->id => "{$term->name} ({$term->academic_year})"])
+                        ->mapWithKeys(fn (AcademicTerm $term) => [$term->id => $term->display_label])
                         ->all())
                     ->searchable(),
                 SelectFilter::make('faculty_id')
