@@ -41,6 +41,21 @@ php artisan boost:install
 
 Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
 
+## Local Testing
+
+Database-backed PHPUnit tests in this project use the SQLite configuration defined in [`phpunit.xml`](phpunit.xml).
+
+For local CLI test runs, ensure the active PHP installation has the `pdo_sqlite` and `sqlite3` extensions enabled.
+
+You can identify the active CLI configuration file with `php --ini` and then verify the required modules with `php -m`.
+
+On Windows, this typically means uncommenting these lines in the active `php.ini` file:
+
+```ini
+extension=pdo_sqlite
+extension=sqlite3
+```
+
 ## Contributing
 
 Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
