@@ -23,9 +23,15 @@
 - Treat existing `semester` usage in tests as follow-up cleanup rather than a behavior change in this documentation task.
 - Decide in a later task whether `term_type` should remain free text or become constrained.
 - Consider a PHP enum only after the `term_type` vocabulary proves stable and reporting needs justify it.
+- [`academic_terms.start_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) and [`academic_terms.end_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) define the registrar calendar boundary for a term record.
+- [`course_offerings.start_date`](database/migrations/2026_07_02_034000_create_course_offerings_table.php) and [`course_offerings.end_date`](database/migrations/2026_07_02_034000_create_course_offerings_table.php) define the actual instructional dates for a specific [`CourseOffering`](app/Models/CourseOffering.php).
+- [`CourseOffering`](app/Models/CourseOffering.php) dates should normally fall within the related [`AcademicTerm`](app/Models/AcademicTerm.php) date range.
+- SeminaryOS should allow exceptions for registrar-approved intensives, modules, practica, make-up sessions, imported historical records, and similar cases where section dates intentionally extend outside the term boundary.
+- Future enforcement should begin with non-blocking warnings or review visibility in existing registrar surfaces before any hard validation is introduced.
+- Hard blocking of out-of-term section dates requires a separate architectural decision and must not be inferred from the current schema, models, or forms.
 
 - Reduce duplicated term selector ordering and label formatting.
-- Clarify whether offering dates must remain inside term dates or may intentionally differ.
 - Clarify whether overlapping active terms are allowed for intensives or modules.
 - Clarify catalog-to-term mapping.
 - Add seed/demo academic terms where appropriate.
+- Consider non-blocking term-boundary warnings on [`CourseOfferingForm`](app/Filament/Resources/CourseOfferings/Schemas/CourseOfferingForm.php) or related completion/review surfaces after the registrar rule is confirmed.
