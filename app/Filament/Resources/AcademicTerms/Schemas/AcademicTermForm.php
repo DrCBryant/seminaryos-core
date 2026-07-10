@@ -45,13 +45,7 @@ class AcademicTermForm
                                     ->options(AcademicTerm::termTypeOptions())
                                     ->required(),
                                 Select::make('status')
-                                    ->options([
-                                        'draft' => 'Draft',
-                                        'open' => 'Open',
-                                        'active' => 'Active',
-                                        'completed' => 'Completed',
-                                        'archived' => 'Archived',
-                                    ])
+                                    ->options(AcademicTerm::statusOptions())
                                     ->required(),
                                 DatePicker::make('start_date')
                                     ->label('Start date')

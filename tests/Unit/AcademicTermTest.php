@@ -45,6 +45,17 @@ class AcademicTermTest extends TestCase
         ], AcademicTerm::termTypeOptions());
     }
 
+    public function test_it_exposes_documented_status_options(): void
+    {
+        $this->assertSame([
+            'draft' => 'Draft',
+            'open' => 'Open',
+            'active' => 'Active',
+            'completed' => 'Completed',
+            'archived' => 'Archived',
+        ], AcademicTerm::statusOptions());
+    }
+
     public function test_it_orders_terms_for_selection_by_academic_year_desc_then_start_date_asc(): void
     {
         $institution = $this->createInstitution();

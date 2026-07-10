@@ -23,6 +23,14 @@ class AcademicTerm extends BaseModel
         'custom' => 'Custom',
     ];
 
+    public const STATUS_OPTIONS = [
+        'draft' => 'Draft',
+        'open' => 'Open',
+        'active' => 'Active',
+        'completed' => 'Completed',
+        'archived' => 'Archived',
+    ];
+
     protected $fillable = [
         'institution_id',
         'uuid',
@@ -48,6 +56,11 @@ class AcademicTerm extends BaseModel
     public static function termTypeOptions(): array
     {
         return self::TERM_TYPE_OPTIONS;
+    }
+
+    public static function statusOptions(): array
+    {
+        return self::STATUS_OPTIONS;
     }
 
     public function getDisplayLabelAttribute(): string

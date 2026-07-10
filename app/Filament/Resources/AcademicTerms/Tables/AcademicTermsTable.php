@@ -57,13 +57,7 @@ class AcademicTermsTable
                 SelectFilter::make('term_type')
                     ->options(AcademicTerm::termTypeOptions()),
                 SelectFilter::make('status')
-                    ->options([
-                        'draft' => 'Draft',
-                        'open' => 'Open',
-                        'active' => 'Active',
-                        'completed' => 'Completed',
-                        'archived' => 'Archived',
-                    ]),
+                    ->options(AcademicTerm::statusOptions()),
                 TrashedFilter::make(),
             ])
             ->recordActions([
