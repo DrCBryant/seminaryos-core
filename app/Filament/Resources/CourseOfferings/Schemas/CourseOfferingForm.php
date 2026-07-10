@@ -11,6 +11,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Get;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -38,6 +39,11 @@ class CourseOfferingForm
                                 return "Capacity: {$capacity} | Enrolled: {$enrolled} | Available seats: {$availableSeats} | Status: {$status}";
                             })
                             ->hidden(fn (?CourseOffering $record): bool => $record === null),
+                        Placeholder::make('academic_term_boundary_warning')
+                            ->label('Registrar review notice')
+                            ->content(fn (Get $get): string => self::academicTermBoundaryWarningMessage($get) ?? '')
+                            ->hidden(fn (Get $get): bool => self::academicTermBoundaryWarningMessage($get) === null)
+                            ->columnSpanFull(),
                         Grid::make(2)
                             ->schema([
                                 Select::make('institution_id')
@@ -60,6 +66,7 @@ class CourseOfferingForm
                                     ->getOptionLabelFromRecordUsing(fn (AcademicTerm $record): string => $record->display_label)
                                     ->searchable()
                                     ->preload()
+                                    ->live()
                                     ->required(),
                                 TextInput::make('section_code')
                                     ->label('Section code')
@@ -80,9 +87,11 @@ class CourseOfferingForm
                                 TextInput::make('meeting_pattern')
                                     ->maxLength(255),
                                 DatePicker::make('start_date')
-                                    ->label('Start date'),
+                                    ->label('Start date')
+                                    ->live(),
                                 DatePicker::make('end_date')
-                                    ->label('End date'),
+                                    ->label('End date')
+                                    ->live(),
                                 TextInput::make('capacity')
                                     ->numeric(),
                                 Select::make('status')
@@ -106,5 +115,26 @@ class CourseOfferingForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    protected static function academicTermBoundaryWarningMessage(Get $get): ?string
+    {
+        $academicTermId = $get('academic_term_id');
+
+        if (blank($academicTermId)) {
+            return null;
+        }
+
+        $academicTerm = AcademicTerm::query()->find($academicTermId);
+
+        if (! $academicTerm) {
+            return null;
+        }
+
+        return CourseOffering::academicTermBoundaryWarningMessage(
+            $academicTerm,
+            $get('start_date'),
+            $get('end_date'),
+        );
     }
 }

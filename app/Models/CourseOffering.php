@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class CourseOffering extends BaseModel
 {
@@ -240,10 +241,71 @@ class CourseOffering extends BaseModel
         return ['enrolled', 'completed', 'in_progress'];
     }
 
+    public static function academicTermBoundaryWarning(?AcademicTerm $academicTerm, mixed $startDate, mixed $endDate): ?array
+    {
+        if (! $academicTerm) {
+            return null;
+        }
+
+        $termStartDate = self::boundaryDate($academicTerm->start_date);
+        $termEndDate = self::boundaryDate($academicTerm->end_date);
+        $offeringStartDate = self::boundaryDate($startDate);
+        $offeringEndDate = self::boundaryDate($endDate);
+
+        $outsideBoundaries = [];
+
+        if ($offeringStartDate && $termStartDate && $offeringStartDate->lt($termStartDate)) {
+            $outsideBoundaries[] = 'The offering start date is before the term start date.';
+        }
+
+        if ($offeringEndDate && $termEndDate && $offeringEndDate->gt($termEndDate)) {
+            $outsideBoundaries[] = 'The offering end date is after the term end date.';
+        }
+
+        if ($outsideBoundaries === []) {
+            return null;
+        }
+
+        $termRange = self::formatBoundaryRange($termStartDate, $termEndDate);
+        $offeringRange = self::formatBoundaryRange($offeringStartDate, $offeringEndDate);
+        $boundarySummary = implode(' ', $outsideBoundaries);
+
+        return [
+            'term_range' => $termRange,
+            'offering_range' => $offeringRange,
+            'outside_boundaries' => $outsideBoundaries,
+            'message' => "Registrar review notice: Academic Term dates {$termRange}; Course Offering dates {$offeringRange}. {$boundarySummary} Registrar-approved exceptions are permitted. Saving is not blocked.",
+        ];
+    }
+
+    public static function academicTermBoundaryWarningMessage(?AcademicTerm $academicTerm, mixed $startDate, mixed $endDate): ?string
+    {
+        return self::academicTermBoundaryWarning($academicTerm, $startDate, $endDate)['message'] ?? null;
+    }
+
     protected static function normalizeSectionCode(mixed $value): string
     {
         $normalized = strtoupper(trim((string) ($value ?? '')));
 
         return $normalized !== '' ? $normalized : self::DEFAULT_SECTION_CODE;
+    }
+
+    protected static function boundaryDate(mixed $value): ?Carbon
+    {
+        return Carbon::make($value)?->startOfDay();
+    }
+
+    protected static function formatBoundaryRange(?Carbon $startDate, ?Carbon $endDate): string
+    {
+        return sprintf(
+            '%s to %s',
+            self::formatBoundaryDate($startDate),
+            self::formatBoundaryDate($endDate),
+        );
+    }
+
+    protected static function formatBoundaryDate(?Carbon $date): string
+    {
+        return $date?->toDateString() ?? '—';
     }
 }
