@@ -26,6 +26,9 @@
 - [`academic_terms.start_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) and [`academic_terms.end_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) define the registrar calendar boundary for a term record.
 - [`academic_terms.status`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) is currently an explicit registrar-managed lifecycle field. Current UI vocabulary is `draft`, `open`, `active`, `completed`, and `archived`, stored as simple strings and not derived automatically from term dates or registration dates.
 - [`academic_terms.registration_start_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) and [`academic_terms.registration_end_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) describe a registration window independent from the term boundary and independent from [`academic_terms.status`](database/migrations/2026_06_15_000000_create_academic_terms_table.php).
+- The registration window describes ordinary term registration timing only; missing registration dates mean no automated registration window has been configured, not that registration is automatically closed.
+- Registrar and other authorized administrative workflows may create or adjust enrollments outside the ordinary registration window until a separate workflow explicitly defines blocking rules, override rules, and any student-facing self-service behavior.
+- Future student or public self-service enrollment may use the registration window to determine ordinary availability, but existing [`CourseEnrollment`](app/Models/CourseEnrollment.php) persistence and registrar workflows must not infer automatic blocking, automatic status changes, or add/drop deadlines from these fields.
 - [`course_offerings.start_date`](database/migrations/2026_07_02_034000_create_course_offerings_table.php) and [`course_offerings.end_date`](database/migrations/2026_07_02_034000_create_course_offerings_table.php) define the actual instructional dates for a specific [`CourseOffering`](app/Models/CourseOffering.php).
 - [`CourseOffering`](app/Models/CourseOffering.php) dates should normally fall within the related [`AcademicTerm`](app/Models/AcademicTerm.php) date range.
 - SeminaryOS should allow exceptions for registrar-approved intensives, modules, practica, make-up sessions, imported historical records, and similar cases where section dates intentionally extend outside the term boundary.
@@ -43,3 +46,6 @@
 - Add reusable query scopes later for administratively active terms and separately for date-applicable terms when a workflow needs them.
 - Add overlap visibility in registrar surfaces before considering overlap validation.
 - Clarify later whether registration windows should merely inform workflows or also drive explicit registrar warnings and filters.
+- Create reusable registration-window evaluation helpers when a concrete workflow needs them.
+- Define student self-service enrollment availability, registrar override behavior, and late-registration rules before introducing blocking enrollment-window enforcement.
+- Define add/drop deadlines separately if registrar policy requires them; do not infer them from the ordinary registration window by default.
