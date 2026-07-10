@@ -24,14 +24,22 @@
 - Decide in a later task whether `term_type` should remain free text or become constrained.
 - Consider a PHP enum only after the `term_type` vocabulary proves stable and reporting needs justify it.
 - [`academic_terms.start_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) and [`academic_terms.end_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) define the registrar calendar boundary for a term record.
+- [`academic_terms.status`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) is currently an explicit registrar-managed lifecycle field. Current UI vocabulary is `draft`, `open`, `active`, `completed`, and `archived`, stored as simple strings and not derived automatically from term dates or registration dates.
+- [`academic_terms.registration_start_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) and [`academic_terms.registration_end_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) describe a registration window independent from the term boundary and independent from [`academic_terms.status`](database/migrations/2026_06_15_000000_create_academic_terms_table.php).
 - [`course_offerings.start_date`](database/migrations/2026_07_02_034000_create_course_offerings_table.php) and [`course_offerings.end_date`](database/migrations/2026_07_02_034000_create_course_offerings_table.php) define the actual instructional dates for a specific [`CourseOffering`](app/Models/CourseOffering.php).
 - [`CourseOffering`](app/Models/CourseOffering.php) dates should normally fall within the related [`AcademicTerm`](app/Models/AcademicTerm.php) date range.
 - SeminaryOS should allow exceptions for registrar-approved intensives, modules, practica, make-up sessions, imported historical records, and similar cases where section dates intentionally extend outside the term boundary.
 - Future enforcement should begin with non-blocking warnings or review visibility in existing registrar surfaces before any hard validation is introduced.
 - Hard blocking of out-of-term section dates requires a separate architectural decision and must not be inferred from the current schema, models, or forms.
+- Multiple [`AcademicTerm`](app/Models/AcademicTerm.php) records may overlap within the same institution, including standard terms, intensives, modules, and other registrar-defined calendars.
+- Code must not assume a single current term, a single active term, or that only one term may contain a given date unless a specific workflow defines narrower context such as institution, program, term type, or offering.
+- Any future prohibition on overlap, limit on simultaneous active terms, or automatic status/date synchronization requires a separate registrar and architectural decision.
 
 - Reduce duplicated term selector ordering and label formatting.
-- Clarify whether overlapping active terms are allowed for intensives or modules.
 - Clarify catalog-to-term mapping.
 - Add seed/demo academic terms where appropriate.
 - Consider non-blocking term-boundary warnings on [`CourseOfferingForm`](app/Filament/Resources/CourseOfferings/Schemas/CourseOfferingForm.php) or related completion/review surfaces after the registrar rule is confirmed.
+- Centralize Academic Term status vocabulary in [`AcademicTerm`](app/Models/AcademicTerm.php) so forms, tables, tests, and future validation do not duplicate status options.
+- Add reusable query scopes later for administratively active terms and separately for date-applicable terms when a workflow needs them.
+- Add overlap visibility in registrar surfaces before considering overlap validation.
+- Clarify later whether registration windows should merely inform workflows or also drive explicit registrar warnings and filters.
