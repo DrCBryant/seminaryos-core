@@ -2,11 +2,10 @@
 
 namespace App\Filament\Resources\Faculty\Tables;
 
-use App\Filament\Resources\Faculty\Schemas\FacultyForm;
+use App\Models\Faculty;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -34,13 +33,17 @@ class FacultyTable
                 TextColumn::make('status')
                     ->badge()
                     ->sortable(),
+                TextColumn::make('teachingAssignments_count')
+                    ->label('Assignments')
+                    ->counts('teachingAssignments')
+                    ->sortable(),
                 IconColumn::make('is_public')
                     ->label('Public')
                     ->boolean(),
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->options(FacultyForm::STATUS_OPTIONS)
+                    ->options(Faculty::statusOptions())
                     ->multiple(),
                 SelectFilter::make('is_public')
                     ->label('Public visibility')
@@ -56,7 +59,6 @@ class FacultyTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
             ]);

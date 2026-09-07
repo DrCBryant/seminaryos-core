@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Faculty\Schemas;
 
+use App\Models\Faculty;
 use App\Models\Institution;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -16,14 +17,6 @@ use Illuminate\Validation\Rules\Unique;
 
 class FacultyForm
 {
-    public const STATUS_OPTIONS = [
-        'active' => 'Active',
-        'inactive' => 'Inactive',
-        'adjunct' => 'Adjunct',
-        'emeritus' => 'Emeritus',
-        'former' => 'Former',
-    ];
-
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -61,7 +54,7 @@ class FacultyForm
                                 TextInput::make('title')
                                     ->maxLength(255),
                                 Select::make('status')
-                                    ->options(self::STATUS_OPTIONS)
+                                    ->options(Faculty::statusOptions())
                                     ->required()
                                     ->default('active'),
                                 Toggle::make('is_public')

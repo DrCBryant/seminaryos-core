@@ -12,6 +12,23 @@ class TeachingAssignment extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const ROLE_OPTIONS = [
+        'primary_instructor' => 'Primary Instructor',
+        'co_instructor' => 'Co-Instructor',
+        'teaching_assistant' => 'Teaching Assistant',
+        'mentor' => 'Mentor',
+        'supervisor' => 'Supervisor',
+        'guest_lecturer' => 'Guest Lecturer',
+    ];
+
+    public const STATUS_OPTIONS = [
+        'assigned' => 'Assigned',
+        'active' => 'Active',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+        'archived' => 'Archived',
+    ];
+
     protected $fillable = [
         'institution_id',
         'uuid',
@@ -30,6 +47,16 @@ class TeachingAssignment extends BaseModel
         'assigned_at' => 'date',
         'ended_at' => 'date',
     ];
+
+    public static function roleOptions(): array
+    {
+        return self::ROLE_OPTIONS;
+    }
+
+    public static function statusOptions(): array
+    {
+        return self::STATUS_OPTIONS;
+    }
 
     public function institution(): BelongsTo
     {

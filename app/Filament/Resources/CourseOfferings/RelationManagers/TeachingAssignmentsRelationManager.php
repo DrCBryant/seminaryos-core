@@ -2,12 +2,12 @@
 
 namespace App\Filament\Resources\CourseOfferings\RelationManagers;
 
-use App\Filament\Resources\TeachingAssignments\Schemas\TeachingAssignmentForm;
 use App\Models\AcademicTerm;
 use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Faculty;
 use App\Models\Institution;
+use App\Models\TeachingAssignment;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -37,11 +37,11 @@ class TeachingAssignmentsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('role')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => TeachingAssignmentForm::ROLE_OPTIONS[$state] ?? $state)
+                    ->formatStateUsing(fn (string $state): string => TeachingAssignment::roleOptions()[$state] ?? $state)
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => TeachingAssignmentForm::STATUS_OPTIONS[$state] ?? $state)
+                    ->formatStateUsing(fn (string $state): string => TeachingAssignment::statusOptions()[$state] ?? $state)
                     ->sortable(),
                 TextColumn::make('assigned_at')
                     ->label('Assigned at')
@@ -85,10 +85,10 @@ class TeachingAssignmentsRelationManager extends RelationManager
                             ->preload()
                             ->required(),
                         Select::make('role')
-                            ->options(TeachingAssignmentForm::ROLE_OPTIONS)
+                            ->options(TeachingAssignment::roleOptions())
                             ->required(),
                         Select::make('status')
-                            ->options(TeachingAssignmentForm::STATUS_OPTIONS)
+                            ->options(TeachingAssignment::statusOptions())
                             ->default('assigned')
                             ->required(),
                         DatePicker::make('assigned_at')
@@ -139,10 +139,10 @@ class TeachingAssignmentsRelationManager extends RelationManager
                             ->preload()
                             ->required(),
                         Select::make('role')
-                            ->options(TeachingAssignmentForm::ROLE_OPTIONS)
+                            ->options(TeachingAssignment::roleOptions())
                             ->required(),
                         Select::make('status')
-                            ->options(TeachingAssignmentForm::STATUS_OPTIONS)
+                            ->options(TeachingAssignment::statusOptions())
                             ->required(),
                         DatePicker::make('assigned_at')
                             ->label('Assigned at'),

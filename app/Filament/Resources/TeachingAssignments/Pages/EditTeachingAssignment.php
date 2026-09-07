@@ -4,7 +4,6 @@ namespace App\Filament\Resources\TeachingAssignments\Pages;
 
 use App\Filament\Resources\TeachingAssignments\TeachingAssignmentResource;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
 
@@ -16,7 +15,6 @@ class EditTeachingAssignment extends EditRecord
     {
         return [
             DeleteAction::make(),
-            ForceDeleteAction::make(),
             RestoreAction::make(),
         ];
     }

@@ -7,9 +7,11 @@ use App\Models\Course;
 use App\Models\CourseOffering;
 use App\Models\Faculty;
 use App\Models\Institution;
+use App\Models\TeachingAssignment;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -17,23 +19,6 @@ use Filament\Schemas\Schema;
 
 class TeachingAssignmentForm
 {
-    public const ROLE_OPTIONS = [
-        'primary_instructor' => 'Primary Instructor',
-        'co_instructor' => 'Co-Instructor',
-        'teaching_assistant' => 'Teaching Assistant',
-        'mentor' => 'Mentor',
-        'supervisor' => 'Supervisor',
-        'guest_lecturer' => 'Guest Lecturer',
-    ];
-
-    public const STATUS_OPTIONS = [
-        'assigned' => 'Assigned',
-        'active' => 'Active',
-        'completed' => 'Completed',
-        'cancelled' => 'Cancelled',
-        'archived' => 'Archived',
-    ];
-
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -85,6 +70,7 @@ class TeachingAssignmentForm
                                     ->getOptionLabelFromRecordUsing(fn (Course $record): string => "{$record->code} — {$record->title}")
                                     ->searchable()
                                     ->preload()
+                                    ->live()
                                     ->required()
                                     ->helperText('Retained for legacy/manual teaching assignments when no course offering is selected.'),
                                 Select::make('academic_term_id')
@@ -93,13 +79,13 @@ class TeachingAssignmentForm
                                     ->getOptionLabelFromRecordUsing(fn (AcademicTerm $record): string => $record->display_label)
                                     ->searchable()
                                     ->preload()
-                                    ->required()
-                                    ->helperText('Retained for legacy/manual teaching assignments when no course offering is selected.'),
+                                    ->required(fn (Get $get): bool => self::selectedCourseRequiresTerm($get))
+                                    ->helperText(fn (Get $get): string => self::termHelperText($get)),
                                 Select::make('role')
-                                    ->options(self::ROLE_OPTIONS)
+                                    ->options(TeachingAssignment::roleOptions())
                                     ->required(),
                                 Select::make('status')
-                                    ->options(self::STATUS_OPTIONS)
+                                    ->options(TeachingAssignment::statusOptions())
                                     ->default('assigned')
                                     ->required(),
                                 DatePicker::make('assigned_at')
@@ -112,5 +98,21 @@ class TeachingAssignmentForm
                             ->rows(4),
                     ]),
             ]);
+    }
+
+    protected static function selectedCourseRequiresTerm(Get $get): bool
+    {
+        $course = Course::query()->find($get('course_id'));
+
+        return ! $course || ! $course->isCompletionDateGrouped();
+    }
+
+    protected static function termHelperText(Get $get): string
+    {
+        $course = Course::query()->find($get('course_id'));
+
+        return $course?->isCompletionDateGrouped()
+            ? 'Optional for completion-date grouped coursework; do not assign a conventional term solely for teaching administration.'
+            : 'Retained for legacy/manual teaching assignments when no course offering is selected.';
     }
 }

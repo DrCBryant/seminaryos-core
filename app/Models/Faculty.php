@@ -14,6 +14,14 @@ class Faculty extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const STATUS_OPTIONS = [
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+        'adjunct' => 'Adjunct',
+        'emeritus' => 'Emeritus',
+        'former' => 'Former',
+    ];
+
     protected $table = 'faculty';
 
     protected $fillable = [
@@ -37,6 +45,11 @@ class Faculty extends BaseModel
         'started_at' => 'date',
         'ended_at' => 'date',
     ];
+
+    public static function statusOptions(): array
+    {
+        return self::STATUS_OPTIONS;
+    }
 
     protected function fullName(): Attribute
     {

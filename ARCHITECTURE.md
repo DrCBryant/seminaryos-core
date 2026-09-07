@@ -49,6 +49,15 @@
 - Official transcript issuance resolves completion-date records before creating lines. Unresolved records prevent silent issuance; issued `term_label` values remain durable snapshots and are never re-resolved during rendering.
 - AcademicRecord remains durable and may have a nullable `academic_term_id` for non-term completion. Completion continues through `EnrollmentCompletionService`, with existing guarded eligibility and audit snapshots.
 
+## Faculty and Teaching Assignments
+
+- `Faculty` is institution-scoped academic personnel identity and is separate from `User` authentication. Faculty records do not require login accounts, and Faculty Portal authentication is deferred.
+- `TeachingAssignment` is the instructional assignment record. `CourseOffering` remains the operational Class Section context, and offering-backed assignments inherit its course and AcademicTerm context.
+- Faculty status and assignment role/status vocabularies are centralized as model string options. Status changes are administrative and do not automatically transition or delete assignments.
+- Multiple faculty assignments and roles remain supported; no new primary-instructor uniqueness policy is inferred.
+- Teaching assignments may be direct/manual. Completion-date courses may retain a null `academic_term_id`; faculty administration does not force a conventional term onto non-term coursework.
+- Faculty and assignment history remains inspectable through soft-delete/inactive semantics. Routine hard-delete actions are not exposed where foreign-key cascades would erase historical assignment context.
+
 ### Intentionally deferred
 
 - Student self-service availability and separate late-registration/add/drop policies.

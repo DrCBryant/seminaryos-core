@@ -46,6 +46,14 @@
 - Completion-date reporting resolves only one inclusive standard reporting term (`fall`, `spring`, `summer`, or `winter`) from the durable completion date. Specialized terms are ignored; ambiguity and no-match outcomes require registrar review.
 - Official transcript issuance preserves durable snapshot labels and fails safely before issuance when reporting context is unresolved.
 
+## Faculty: Complete
+
+- Existing institution-scoped Faculty identity remains independent from User authentication.
+- TeachingAssignment remains the instructional assignment record, with CourseOffering as authoritative section context.
+- Faculty and assignment status/role vocabularies are centralized; inactive faculty history remains inspectable.
+- Completion-date coursework may use direct assignments without an artificial AcademicTerm.
+- Hard-delete actions that could erase assignment history were removed from Faculty and TeachingAssignment administration.
+
 ## Outside the Completed Academic Terms Goal
 
 Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

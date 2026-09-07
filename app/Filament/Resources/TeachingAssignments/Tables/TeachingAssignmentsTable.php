@@ -2,14 +2,13 @@
 
 namespace App\Filament\Resources\TeachingAssignments\Tables;
 
-use App\Filament\Resources\TeachingAssignments\Schemas\TeachingAssignmentForm;
 use App\Models\AcademicTerm;
 use App\Models\Course;
 use App\Models\Faculty;
+use App\Models\TeachingAssignment;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -43,11 +42,11 @@ class TeachingAssignmentsTable
                     ->sortable(),
                 TextColumn::make('role')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => TeachingAssignmentForm::ROLE_OPTIONS[$state] ?? $state)
+                    ->formatStateUsing(fn (string $state): string => TeachingAssignment::roleOptions()[$state] ?? $state)
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => TeachingAssignmentForm::STATUS_OPTIONS[$state] ?? $state)
+                    ->formatStateUsing(fn (string $state): string => TeachingAssignment::statusOptions()[$state] ?? $state)
                     ->sortable(),
                 TextColumn::make('assigned_at')
                     ->label('Assigned date')
@@ -81,9 +80,9 @@ class TeachingAssignmentsTable
                         ->all())
                     ->searchable(),
                 SelectFilter::make('role')
-                    ->options(TeachingAssignmentForm::ROLE_OPTIONS),
+                    ->options(TeachingAssignment::roleOptions()),
                 SelectFilter::make('status')
-                    ->options(TeachingAssignmentForm::STATUS_OPTIONS),
+                    ->options(TeachingAssignment::statusOptions()),
                 TrashedFilter::make(),
             ])
             ->recordActions([
@@ -92,7 +91,6 @@ class TeachingAssignmentsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
             ]);
