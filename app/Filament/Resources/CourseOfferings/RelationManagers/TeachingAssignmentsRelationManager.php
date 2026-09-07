@@ -121,7 +121,7 @@ class TeachingAssignmentsRelationManager extends RelationManager
                         Select::make('course_offering_id')
                             ->label('Course offering')
                             ->relationship('courseOffering', 'section_code', fn ($query) => $query->orderByDesc('academic_term_id')->orderBy('section_code'))
-                            ->getOptionLabelFromRecordUsing(fn (CourseOffering $record): string => trim("{$record->course?->code} — {$record->academicTerm?->name} ({$record->academicTerm?->academic_year}) — {$record->section_code}"))
+                            ->getOptionLabelFromRecordUsing(fn (CourseOffering $record): string => trim("{$record->course?->code} — {$record->academicTerm?->display_label} — {$record->section_code}"))
                             ->searchable()
                             ->preload(),
                         Select::make('course_id')

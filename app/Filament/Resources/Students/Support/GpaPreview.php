@@ -91,7 +91,7 @@ class GpaPreview
                 $termQualityPoints = (float) $group->sum(fn (AcademicRecord $record) => self::calculateQualityPoints($record));
 
                 return [
-                    'label' => $term ? "{$term->name} ({$term->academic_year})" : 'Academic Term',
+                    'label' => $term ? $term->display_label : 'Academic Term',
                     'records' => $group,
                     'gpaCredits' => $termCredits,
                     'qualityPoints' => $termQualityPoints,

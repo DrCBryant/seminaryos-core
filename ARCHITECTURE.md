@@ -2,50 +2,45 @@
 
 ## Academic Terms
 
-- [`AcademicTerm`](app/Models/AcademicTerm.php) is institution-scoped and belongs to the core academic operations domain.
-- [`AcademicTerm`](app/Models/AcademicTerm.php) is the canonical scheduling boundary for offerings, enrollments, teaching assignments, attendance sessions, academic records, and transcript grouping.
-- [`CourseOffering`](app/Models/CourseOffering.php) remains the operational class section model and must not be renamed or replaced by [`AcademicTerm`](app/Models/AcademicTerm.php).
-- [`Catalog`](app/Models/Catalog.php) currently uses `academic_year`, `effective_start_date`, and `effective_end_date` independently. Do not introduce a direct Catalog-to-AcademicTerm relationship without a separate architectural decision.
-- [`OfficialTranscriptLine`](app/Models/OfficialTranscriptLine.php) stores both `academic_term_id` and denormalized `term_label`. The `term_label` value is durable snapshot text and should not be casually regenerated after transcript issuance.
+- `AcademicTerm` is an institution-scoped core academic operations model. Its existing institution scope and relationships remain authoritative.
+- It is the canonical scheduling context for `CourseOffering`, `CourseEnrollment`, `TeachingAssignment`, `AttendanceSession`, `AcademicRecord`, and transcript grouping. Direct enrollment-to-term relationships support legacy/manual enrollment without a section.
+- `CourseOffering` remains the operational Class Section model; it is not replaced or renamed.
+- `Catalog` uses `academic_year` and effective dates independently. No direct Catalog-to-AcademicTerm coupling is established.
 
-### Academic Term `term_type`
+### Labels, selection, and vocabulary
 
-- [`academic_terms.term_type`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) is currently a simple indexed string, and [`AcademicTerm`](app/Models/AcademicTerm.php) treats it as a fillable attribute without enum casting or model-level normalization.
-- Current usage is mixed: the Academic Term Filament form and table filter present registrar-style term names such as `fall`, `spring`, `summer`, `winter`, `intensive`, and `custom`, while tests still create terms with `semester`.
-- Near-term architectural rule: `term_type` should describe the registrar/calendar category of a specific term record, not the broader academic calendar system. Prefer concrete term labels such as `fall` or `spring` instead of structural labels such as `semester`.
-- Canonical near-term vocabulary for documentation and future alignment is: `fall`, `spring`, `summer`, `winter`, `intensive`, `module`, and `custom`.
-- Filament `term_type` options should be sourced from [`AcademicTerm`](app/Models/AcademicTerm.php) rather than duplicated in resource classes.
-- Acceptable values remain simple strings for now. Do not introduce a PHP enum, schema constraint, or data rewrite until the vocabulary is stable enough to justify stricter typing and reporting rules.
+- `AcademicTerm.display_label` supplies live display text as `{name} ({academic_year})`.
+- `orderedForSelection()` orders terms by academic year descending, then start date ascending. Chronological transcript grouping retains its own reporting order.
+- `AcademicTerm::termTypeOptions()` centralizes the calendar category vocabulary: `fall`, `spring`, `summer`, `winter`, `intensive`, `module`, `custom`. These describe specific registrar terms, not calendar systems such as `semester`.
+- `AcademicTerm::statusOptions()` centralizes `draft`, `open`, `active`, `completed`, `archived`. Status is registrar-managed and never automatically derived from instructional or registration dates.
+- Type and status remain strings. No enum conversion, database constraint, normalization, or historical data rewrite is introduced.
 
-### Known Academic Terms Follow-ups
+### Calendar boundaries and overlap
 
-- Align Filament options, tests, seeders, factories, and any validation with the documented `term_type` vocabulary.
-- Treat existing `semester` usage in tests as follow-up cleanup rather than a behavior change in this documentation task.
-- Decide in a later task whether `term_type` should remain free text or become constrained.
-- Consider a PHP enum only after the `term_type` vocabulary proves stable and reporting needs justify it.
-- [`academic_terms.start_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) and [`academic_terms.end_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) define the registrar calendar boundary for a term record.
-- [`academic_terms.status`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) is currently an explicit registrar-managed lifecycle field. Current UI vocabulary is `draft`, `open`, `active`, `completed`, and `archived`, stored as simple strings and not derived automatically from term dates or registration dates.
-- [`academic_terms.registration_start_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) and [`academic_terms.registration_end_date`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) describe a registration window independent from the term boundary and independent from [`academic_terms.status`](database/migrations/2026_06_15_000000_create_academic_terms_table.php).
-- The registration window describes ordinary term registration timing only; missing registration dates mean no automated registration window has been configured, not that registration is automatically closed.
-- Registrar and other authorized administrative workflows may create or adjust enrollments outside the ordinary registration window until a separate workflow explicitly defines blocking rules, override rules, and any student-facing self-service behavior.
-- Future student or public self-service enrollment may use the registration window to determine ordinary availability, but existing [`CourseEnrollment`](app/Models/CourseEnrollment.php) persistence and registrar workflows must not infer automatic blocking, automatic status changes, or add/drop deadlines from these fields.
-- [`course_offerings.start_date`](database/migrations/2026_07_02_034000_create_course_offerings_table.php) and [`course_offerings.end_date`](database/migrations/2026_07_02_034000_create_course_offerings_table.php) define the actual instructional dates for a specific [`CourseOffering`](app/Models/CourseOffering.php).
-- [`CourseOffering`](app/Models/CourseOffering.php) dates should normally fall within the related [`AcademicTerm`](app/Models/AcademicTerm.php) date range.
-- SeminaryOS should allow exceptions for registrar-approved intensives, modules, practica, make-up sessions, imported historical records, and similar cases where section dates intentionally extend outside the term boundary.
-- Future enforcement should begin with non-blocking warnings or review visibility in existing registrar surfaces before any hard validation is introduced.
-- Hard blocking of out-of-term section dates requires a separate architectural decision and must not be inferred from the current schema, models, or forms.
-- Multiple [`AcademicTerm`](app/Models/AcademicTerm.php) records may overlap within the same institution, including standard terms, intensives, modules, and other registrar-defined calendars.
-- Code must not assume a single current term, a single active term, or that only one term may contain a given date unless a specific workflow defines narrower context such as institution, program, term type, or offering.
-- Any future prohibition on overlap, limit on simultaneous active terms, or automatic status/date synchronization requires a separate registrar and architectural decision.
+- Term start/end dates are registrar calendar boundaries; the form requires end on or after start.
+- Section start/end dates represent actual instruction and normally fall within the term. Existing `CourseOffering` boundary helpers and form notices warn about dates outside the term without blocking persistence.
+- Registrar-approved exceptions remain available for intensives, modules, practica, make-up sessions, imported historical records, and similar cases.
+- Terms may overlap within an institution, and multiple terms may be active simultaneously. There is no global single-current-term assumption or automatic status synchronization.
 
-- Reduce duplicated term selector ordering and label formatting.
-- Clarify catalog-to-term mapping.
-- Add seed/demo academic terms where appropriate.
-- Consider non-blocking term-boundary warnings on [`CourseOfferingForm`](app/Filament/Resources/CourseOfferings/Schemas/CourseOfferingForm.php) or related completion/review surfaces after the registrar rule is confirmed.
-- Centralize Academic Term status vocabulary in [`AcademicTerm`](app/Models/AcademicTerm.php) so forms, tables, tests, and future validation do not duplicate status options.
-- Add reusable query scopes later for administratively active terms and separately for date-applicable terms when a workflow needs them.
-- Add overlap visibility in registrar surfaces before considering overlap validation.
-- Clarify later whether registration windows should merely inform workflows or also drive explicit registrar warnings and filters.
-- Create reusable registration-window evaluation helpers when a concrete workflow needs them.
-- Define student self-service enrollment availability, registrar override behavior, and late-registration rules before introducing blocking enrollment-window enforcement.
-- Define add/drop deadlines separately if registrar policy requires them; do not infer them from the ordinary registration window by default.
+### Ordinary registration windows
+
+- Optional `registration_start_date` and `registration_end_date` define ordinary registration timing independently of instructional dates and status. Registration may occur outside instructional dates.
+- Both dates absent means no automated window is configured, not closed registration. `hasRegistrationWindow()` reports whether at least one boundary is present; `isRegistrationOpenOn()` returns `null` when neither is configured.
+- A start-only window has no configured closing boundary; an end-only window has no configured opening boundary. With a configured window, `isRegistrationOpenOn()` returns a boolean. `isBeforeRegistrationWindow()` and `isAfterRegistrationWindow()` evaluate only their respective configured boundary.
+- Evaluation accepts an explicit Carbon date, compares calendar dates (ignoring time of day), and includes both opening and closing dates. Callers supply dates in their intended calendar context; registrar screens use the application's current date.
+- The term form permits missing boundaries and requires registration end on or after registration start only when both are supplied. It does not constrain registration dates to instructional dates.
+- `registrationWindowLabel()` provides shared advisory state text. The Academic Terms table displays today's state and registration dates. The enrollment form shows the selected term's dates and today's state, including legacy/manual enrollments. This is current calendar visibility, not an evaluation of historical `enrolled_at`.
+- Authorized registrars and administrators may create and edit enrollments before opening or after closing. These helpers neither authorize nor block persistence; no override field, timer, job, automatic status transition, or add/drop deadline is introduced.
+- Student self-service enforcement, late-registration approval, and add/drop policies require separate scope and registrar decisions.
+
+### Durable records
+
+- Official transcript lines retain both `academic_term_id` and denormalized `term_label`. Issuance captures snapshot text; issued transcript rendering uses that durable text and never substitutes a live display accessor.
+- Term refinement does not regenerate transcript snapshots, rewrite academic records, or alter guarded completion behavior.
+
+### Intentionally deferred
+
+- Student self-service availability and separate late-registration/add/drop policies.
+- Enum or database constraint changes only if a later architectural decision requires them.
+- Additional seed/demo terms, overlap visibility, or workflow-specific active/date scopes when needed.
+- Catalog mapping requires a separate architectural decision; current independence remains intentional.

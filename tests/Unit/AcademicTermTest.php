@@ -7,6 +7,7 @@ use App\Models\Institution;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AcademicTermTest extends TestCase
@@ -74,6 +75,47 @@ class AcademicTermTest extends TestCase
             $laterInNewestYear->id,
             $older->id,
         ], $orderedIds);
+    }
+
+    #[DataProvider('registrationWindows')]
+    public function test_registration_windows(?string $start, ?string $end, string $date, ?bool $open, bool $before, bool $after): void
+    {
+        $term = new AcademicTerm([
+            'registration_start_date' => $start,
+            'registration_end_date' => $end,
+            'status' => 'draft',
+        ]);
+        $on = Carbon::parse($date);
+
+        $this->assertSame($start !== null || $end !== null, $term->hasRegistrationWindow());
+        $this->assertSame($open, $term->isRegistrationOpenOn($on));
+        $this->assertSame($before, $term->isBeforeRegistrationWindow($on));
+        $this->assertSame($after, $term->isAfterRegistrationWindow($on));
+        $this->assertSame('draft', $term->status);
+        $this->assertSame($date, $on->format('Y-m-d H:i:s'));
+        $this->assertSame(match (true) {
+            $open === null => 'No automated registration window configured',
+            $before => 'Ordinary registration has not opened',
+            $after => 'Ordinary registration window has closed',
+            default => 'Ordinary registration is open',
+        }, $term->registrationWindowLabel($on));
+    }
+
+    public static function registrationWindows(): array
+    {
+        return [
+            'unconfigured' => [null, null, '2026-07-10 12:00:00', null, false, false],
+            'before' => ['2026-07-01', '2026-07-31', '2026-06-30 23:59:59', false, true, false],
+            'inside' => ['2026-07-01', '2026-07-31', '2026-07-10 12:00:00', true, false, false],
+            'after' => ['2026-07-01', '2026-07-31', '2026-08-01 00:00:00', false, false, true],
+            'opening' => ['2026-07-01', '2026-07-31', '2026-07-01 00:00:00', true, false, false],
+            'closing' => ['2026-07-01', '2026-07-31', '2026-07-31 23:59:59', true, false, false],
+            'start only before' => ['2026-07-01', null, '2026-06-30 12:00:00', false, true, false],
+            'start only open' => ['2026-07-01', null, '2027-07-01 12:00:00', true, false, false],
+            'end only open' => [null, '2026-07-31', '2025-07-31 12:00:00', true, false, false],
+            'end only after' => [null, '2026-07-31', '2026-08-01 12:00:00', false, false, true],
+            'single day' => ['2026-07-01', '2026-07-01', '2026-07-01 23:59:59', true, false, false],
+        ];
     }
 
     protected function createInstitution(): Institution

@@ -34,6 +34,7 @@ class AcademicTermsTable
                     ->sortable(),
                 TextColumn::make('term_type')
                     ->label('Term type')
+                    ->formatStateUsing(fn (string $state): string => AcademicTerm::termTypeOptions()[$state] ?? $state)
                     ->badge()
                     ->sortable(),
                 TextColumn::make('start_date')
@@ -45,8 +46,23 @@ class AcademicTermsTable
                     ->date()
                     ->sortable(),
                 TextColumn::make('status')
+                    ->formatStateUsing(fn (string $state): string => AcademicTerm::statusOptions()[$state] ?? $state)
                     ->badge()
                     ->sortable(),
+                TextColumn::make('registration_window')
+                    ->label('Registration today')
+                    ->state(fn (AcademicTerm $record): string => $record->registrationWindowLabel(today()))
+                    ->wrap(),
+                TextColumn::make('registration_start_date')
+                    ->label('Registration opens')
+                    ->date()
+                    ->placeholder('Not configured')
+                    ->toggleable(),
+                TextColumn::make('registration_end_date')
+                    ->label('Registration closes')
+                    ->date()
+                    ->placeholder('Not configured')
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('academic_year')

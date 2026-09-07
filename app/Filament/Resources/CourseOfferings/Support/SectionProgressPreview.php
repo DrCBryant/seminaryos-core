@@ -67,7 +67,7 @@ class SectionProgressPreview
                 'institution_name' => $courseOffering->institution?->name ?? '—',
                 'course_label' => trim(($courseOffering->course?->code ?? '—').' — '.($courseOffering->course?->title ?? '—')),
                 'academic_term' => $courseOffering->academicTerm
-                    ? "{$courseOffering->academicTerm->name} ({$courseOffering->academicTerm->academic_year})"
+                    ? $courseOffering->academicTerm->display_label
                     : '—',
                 'section_code' => $courseOffering->section_code ?: '—',
                 'progress_basis' => SectionProgressEvaluator::formatProgressBasisLabel($courseOffering->progress_basis),

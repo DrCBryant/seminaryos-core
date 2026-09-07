@@ -10,6 +10,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class AcademicTermForm
@@ -55,10 +56,12 @@ class AcademicTermForm
                                     ->required()
                                     ->afterOrEqual('start_date'),
                                 DatePicker::make('registration_start_date')
-                                    ->label('Registration start date'),
+                                    ->label('Registration start date')
+                                    ->helperText('Optional ordinary registration boundary. Blank dates do not mean registration is closed.'),
                                 DatePicker::make('registration_end_date')
                                     ->label('Registration end date')
-                                    ->afterOrEqual('registration_start_date'),
+                                    ->afterOrEqual(fn (Get $get): ?string => filled($get('registration_start_date')) ? 'registration_start_date' : null)
+                                    ->helperText('Administrative enrollment remains allowed outside this window. Registration dates do not change term status.'),
                             ]),
                         Textarea::make('notes')
                             ->rows(4),

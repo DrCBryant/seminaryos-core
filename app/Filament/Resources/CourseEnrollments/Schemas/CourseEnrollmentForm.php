@@ -14,9 +14,10 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Set;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class CourseEnrollmentForm
@@ -77,10 +78,26 @@ class CourseEnrollmentForm
                                     ->label('Academic term')
                                     ->relationship('academicTerm', 'name', fn ($query) => $query->orderedForSelection())
                                     ->getOptionLabelFromRecordUsing(fn (AcademicTerm $record): string => $record->display_label)
+                                    ->live()
                                     ->searchable()
                                     ->preload()
                                     ->required()
                                     ->helperText('Used for legacy/manual enrollments when no course offering is selected.'),
+                                Placeholder::make('registration_window_notice')
+                                    ->label('Registration today (advisory)')
+                                    ->content(function (Get $get): string {
+                                        $term = AcademicTerm::query()->find($get('academic_term_id'));
+
+                                        if (! $term) {
+                                            return 'Select an academic term to see its ordinary registration window.';
+                                        }
+
+                                        $start = $term->registration_start_date?->toDateString() ?? 'not configured';
+                                        $end = $term->registration_end_date?->toDateString() ?? 'not configured';
+
+                                        return $term->registrationWindowLabel(today()).". Opens: {$start}. Closes: {$end}. Authorized administrative enrollment remains allowed; saving is not blocked.";
+                                    })
+                                    ->columnSpanFull(),
                                 Select::make('status')
                                     ->options([
                                         'enrolled' => 'Enrolled',
@@ -108,16 +125,16 @@ class CourseEnrollmentForm
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                TextInput::make('status')
+                                TextInput::make('audit_enrollment_status')
                                     ->label('Enrollment status')
                                     ->disabled()
                                     ->dehydrated(false)
-                                    ->formatStateUsing(fn (?string $state): string => self::formatValue(filled($state) ? str($state)->replace('_', ' ')->title()->toString() : null)),
-                                TextInput::make('completed_at')
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::formatValue($record?->status ? str($record->status)->replace('_', ' ')->title()->toString() : null)),
+                                TextInput::make('audit_completed_at')
                                     ->label('Completed at')
                                     ->disabled()
                                     ->dehydrated(false)
-                                    ->formatStateUsing(fn ($state): string => self::formatDateTimeValue($state)),
+                                    ->formatStateUsing(fn (?CourseEnrollment $record): string => self::formatDateTimeValue($record?->completed_at)),
                                 TextInput::make('completion_progress_basis')
                                     ->label('Completion progress basis')
                                     ->disabled()

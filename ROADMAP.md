@@ -13,7 +13,7 @@
 - Catalog CRUD
 - Applicant CRUD
 - Student CRUD
-- Academic Terms foundation implemented
+- Academic Terms foundation and refinement complete
 
 ## Next Build Phase: Academic Operations
 
@@ -27,22 +27,17 @@
 8. Student Portal
 9. Faculty Portal
 
-## Immediate Next Task
+## Academic Terms: Complete
 
-Academic Terms foundation is already implemented. Current work is architecture reconciliation and refinement planning.
+- Existing institution-scoped model, relationships, migration, and Filament management preserved.
+- Live labels, selector ordering, term type, and status vocabulary centralized.
+- Registrar-managed status, overlapping terms, and simultaneous active terms supported.
+- Section date exceptions remain advisory and non-blocking.
+- Optional registration windows evaluated through reusable model methods with inclusive boundaries and one-sided windows.
+- Registration dates and current advisory state visible in existing term/enrollment surfaces; administrative enrollment remains possible outside the window.
+- Form date consistency and focused PHPUnit coverage completed; architecture recorded in `ARCHITECTURE.md`.
+- Durable official transcript snapshots and independent Catalog effective dates preserved.
 
-## Academic Terms Status
+## Outside the Completed Academic Terms Goal
 
-- [`AcademicTerm`](app/Models/AcademicTerm.php) exists as an institution-scoped academic scheduling model.
-- The [`academic_terms`](database/migrations/2026_06_15_000000_create_academic_terms_table.php) migration already exists.
-- Filament Academic Terms management already exists under [`app/Filament/Resources/AcademicTerms`](app/Filament/Resources/AcademicTerms).
-- Existing academic operations already reference terms from [`CourseOffering`](app/Models/CourseOffering.php), [`CourseEnrollment`](app/Models/CourseEnrollment.php), [`TeachingAssignment`](app/Models/TeachingAssignment.php), [`AttendanceSession`](app/Models/AttendanceSession.php), [`AcademicRecord`](app/Models/AcademicRecord.php), and [`OfficialTranscriptLine`](app/Models/OfficialTranscriptLine.php).
-
-## Known Academic Terms Follow-ups
-
-- Normalize the canonical `term_type` vocabulary.
-- Reduce duplicated term selector ordering and term label formatting across Filament resources.
-- Clarify whether offering dates must remain inside term dates or may intentionally differ.
-- Clarify whether overlapping active terms are allowed for intensives or modular calendars.
-- Clarify catalog-to-term mapping without introducing direct coupling by default.
-- Add seed/demo academic terms where appropriate for local and demo workflows.
+Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

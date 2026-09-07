@@ -47,7 +47,7 @@ class TranscriptPreview
                 $term = $group->first()->academicTerm;
 
                 return [
-                    'label' => $term ? "{$term->name} ({$term->academic_year})" : 'Academic Term',
+                    'label' => $term ? $term->display_label : 'Academic Term',
                     'records' => $group,
                 ];
             })
