@@ -38,6 +38,14 @@
 - Form date consistency and focused PHPUnit coverage completed; architecture recorded in `ARCHITECTURE.md`.
 - Durable official transcript snapshots and independent Catalog effective dates preserved.
 
+## Course Enrollments: Complete
+
+- Existing CourseEnrollment, guarded completion, AcademicRecord, CourseOffering, and transcript architectures preserved.
+- `Course.scheduling_basis` distinguishes default term-bound coursework from completion-date grouped courses such as Kairos.
+- Enrollment AcademicTerm context is nullable for valid non-term coursework; direct/manual and CourseOffering-backed workflows remain supported.
+- Completion-date reporting resolves only one inclusive standard reporting term (`fall`, `spring`, `summer`, or `winter`) from the durable completion date. Specialized terms are ignored; ambiguity and no-match outcomes require registrar review.
+- Official transcript issuance preserves durable snapshot labels and fails safely before issuance when reporting context is unresolved.
+
 ## Outside the Completed Academic Terms Goal
 
 Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

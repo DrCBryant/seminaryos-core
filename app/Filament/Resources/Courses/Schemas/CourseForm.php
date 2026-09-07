@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Courses\Schemas;
 
+use App\Models\Course;
 use App\Models\Institution;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -39,6 +40,12 @@ class CourseForm
                                 TextInput::make('credit_hours')
                                     ->label('Credits')
                                     ->numeric(),
+                                Select::make('scheduling_basis')
+                                    ->label('Scheduling basis')
+                                    ->options(Course::schedulingBasisOptions())
+                                    ->default(Course::SCHEDULING_BASIS_TERM)
+                                    ->required()
+                                    ->helperText('Term-bound courses use an Academic Term. Kairos and other non-term coursework use completion-date grouping.'),
                                 TextInput::make('slug')
                                     ->required()
                                     ->alphaDash()

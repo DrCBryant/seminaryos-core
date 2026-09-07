@@ -6,6 +6,7 @@ use App\Filament\Resources\OfficialTranscripts\Schemas\OfficialTranscriptForm;
 use App\Filament\Resources\OfficialTranscripts\Support\OfficialTranscriptView;
 use App\Models\AcademicRecord;
 use App\Models\OfficialTranscript;
+use App\Support\AcademicTerms\ReportingTermResolver;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -129,7 +130,7 @@ class OfficialTranscriptsTable
                             return;
                         }
 
-                        $record->loadMissing('student.academicRecords.academicTerm', 'lines');
+                        $record->loadMissing('student.academicRecords.academicTerm', 'student.academicRecords.course', 'lines');
 
                         if ($record->student->academicRecords->isEmpty()) {
                             Notification::make()
@@ -149,6 +150,25 @@ class OfficialTranscriptsTable
                                 fn (AcademicRecord $academicRecord) => $academicRecord->course_title,
                             ])
                             ->values();
+
+                        $resolver = app(ReportingTermResolver::class);
+                        $reportingTerms = [];
+
+                        foreach ($academicRecords as $academicRecord) {
+                            $resolution = $resolver->resolveAcademicRecord($academicRecord);
+
+                            if ($resolution['status'] !== ReportingTermResolver::RESOLVED) {
+                                Notification::make()
+                                    ->title('Transcript cannot be issued')
+                                    ->body($resolution['message'] ?? 'A reporting term requires registrar resolution before issuance.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $reportingTerms[$academicRecord->id] = $resolution['term'];
+                        }
 
                         $transcriptNumber = filled($data['transcript_number'] ?? null)
                             ? trim((string) $data['transcript_number'])
@@ -170,7 +190,7 @@ class OfficialTranscriptsTable
                             return;
                         }
 
-                        DB::transaction(function () use ($record, $data, $transcriptNumber): void {
+                        DB::transaction(function () use ($record, $data, $transcriptNumber, $academicRecords, $reportingTerms): void {
                             if (in_array($record->status, self::ISSUABLE_STATUSES, true) && $record->lines()->exists()) {
                                 $record->lines()->delete();
                             }
@@ -178,22 +198,18 @@ class OfficialTranscriptsTable
                             $sortOrder = 1;
 
                             $record->lines()->createMany(
-                                $academicRecords = $record->student->academicRecords
-                                    ->sortBy([
-                                        fn (AcademicRecord $academicRecord) => $academicRecord->academicTerm?->start_date?->timestamp ?? PHP_INT_MAX,
-                                        fn (AcademicRecord $academicRecord) => $academicRecord->course_code,
-                                        fn (AcademicRecord $academicRecord) => $academicRecord->course_title,
-                                    ])
+                                $academicRecords
+                                    ->sortBy(fn (AcademicRecord $academicRecord) => $reportingTerms[$academicRecord->id]?->start_date?->timestamp ?? PHP_INT_MAX)
                                     ->values()
-                                    ->map(function (AcademicRecord $academicRecord) use (&$sortOrder, $record): array {
+                                    ->map(function (AcademicRecord $academicRecord) use (&$sortOrder, $record, $reportingTerms): array {
+                                        $term = $reportingTerms[$academicRecord->id];
+
                                         return [
                                             'institution_id' => $record->institution_id,
                                             'academic_record_id' => $academicRecord->id,
                                             'student_id' => $academicRecord->student_id,
-                                            'academic_term_id' => $academicRecord->academic_term_id,
-                                            'term_label' => $academicRecord->academicTerm
-                                                ? "{$academicRecord->academicTerm->name} ({$academicRecord->academicTerm->academic_year})"
-                                                : null,
+                                            'academic_term_id' => $term?->id,
+                                            'term_label' => $term?->display_label,
                                             'course_code' => $academicRecord->course_code,
                                             'course_title' => $academicRecord->course_title,
                                             'credits_attempted' => $academicRecord->credits_attempted,

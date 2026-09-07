@@ -63,6 +63,10 @@ class CourseEnrollmentsTable
                     ->label('Term')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('course.scheduling_basis')
+                    ->label('Scheduling basis')
+                    ->formatStateUsing(fn (?string $state): string => Course::schedulingBasisOptions()[$state] ?? 'Term-bound')
+                    ->badge(),
                 TextColumn::make('status')
                     ->badge()
                     ->sortable(),
@@ -85,14 +89,7 @@ class CourseEnrollmentsTable
                         ->all())
                     ->searchable(),
                 SelectFilter::make('status')
-                    ->options([
-                        'enrolled' => 'Enrolled',
-                        'dropped' => 'Dropped',
-                        'withdrawn' => 'Withdrawn',
-                        'completed' => 'Completed',
-                        'failed' => 'Failed',
-                        'incomplete' => 'Incomplete',
-                    ]),
+                    ->options(CourseEnrollment::statusOptions()),
                 SelectFilter::make('course_id')
                     ->label('Course')
                     ->options(fn () => Course::query()

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Students\Support;
 
 use App\Models\Student;
+use App\Support\AcademicTerms\ReportingTermResolver;
 use Filament\Actions\Action;
 use Illuminate\Support\Collection;
 
@@ -30,6 +31,7 @@ class TranscriptPreview
             'institution',
             'program',
             'academicRecords.academicTerm',
+            'academicRecords.course',
         ]);
 
         $records = $student->academicRecords
@@ -40,35 +42,37 @@ class TranscriptPreview
             ])
             ->values();
 
+        $resolver = app(ReportingTermResolver::class);
+        $reportingTerms = $records->mapWithKeys(function ($record) use ($resolver): array {
+            $resolution = $resolver->resolveAcademicRecord($record);
+
+            return [$record->id => $resolution];
+        });
+
         $termGroups = $records
-            ->filter(fn ($record) => $record->academicTerm !== null)
-            ->groupBy(fn ($record) => (string) $record->academic_term_id)
-            ->map(function (Collection $group) {
-                $term = $group->first()->academicTerm;
+            ->filter(fn ($record): bool => $reportingTerms[$record->id]['term'] !== null || $record->course?->isCompletionDateGrouped())
+            ->groupBy(fn ($record) => (string) ($reportingTerms[$record->id]['term']?->id ?? 'unresolved-'.$reportingTerms[$record->id]['status']))
+            ->map(function (Collection $group) use ($reportingTerms) {
+                $resolution = $reportingTerms[$group->first()->id];
+                $term = $resolution['term'];
 
                 return [
-                    'label' => $term ? $term->display_label : 'Academic Term',
+                    'label' => $term?->display_label ?? ($resolution['message'] ?? 'Reporting term unresolved'),
                     'records' => $group,
                 ];
             })
             ->values();
 
         $otherGroups = $records
-            ->filter(fn ($record) => $record->academicTerm === null)
-            ->groupBy(function ($record): string {
-                return in_array($record->status, ['transfer', 'waived'], true)
-                    ? $record->status
-                    : 'no_term';
-            })
-            ->map(function (Collection $group, string $key) {
-                $label = match ($key) {
-                    'transfer' => 'Transfer Records',
-                    'waived' => 'Waived Records',
-                    default => 'Records Without Academic Term',
-                };
-
+            ->filter(fn ($record): bool => $reportingTerms[$record->id]['term'] === null && ! $record->course?->isCompletionDateGrouped())
+            ->groupBy(fn ($record): string => in_array($record->status, ['transfer', 'waived'], true) ? $record->status : 'no_term')
+            ->map(function (Collection $group, string $key): array {
                 return [
-                    'label' => $label,
+                    'label' => match ($key) {
+                        'transfer' => 'Transfer Records',
+                        'waived' => 'Waived Records',
+                        default => 'Records Without Academic Term',
+                    },
                     'records' => $group,
                 ];
             })

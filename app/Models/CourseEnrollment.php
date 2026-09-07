@@ -14,6 +14,20 @@ class CourseEnrollment extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const STATUS_OPTIONS = [
+        'enrolled' => 'Enrolled',
+        'dropped' => 'Dropped',
+        'withdrawn' => 'Withdrawn',
+        'completed' => 'Completed',
+        'failed' => 'Failed',
+        'incomplete' => 'Incomplete',
+    ];
+
+    public static function statusOptions(): array
+    {
+        return self::STATUS_OPTIONS;
+    }
+
     protected $fillable = [
         'institution_id',
         'uuid',

@@ -38,6 +38,17 @@
 - Official transcript lines retain both `academic_term_id` and denormalized `term_label`. Issuance captures snapshot text; issued transcript rendering uses that durable text and never substitutes a live display accessor.
 - Term refinement does not regenerate transcript snapshots, rewrite academic records, or alter guarded completion behavior.
 
+## Course Enrollments
+
+- `CourseEnrollment` remains the single enrollment model and supports both CourseOffering-backed and direct/manual workflows.
+- `Course.scheduling_basis` is a lightweight string semantic with centralized options: `term` (the default) and `completion_date`. Kairos courses use `completion_date`; existing courses retain term behavior unless explicitly reclassified.
+- Term-bound enrollments use their direct AcademicTerm context. Completion-date grouped enrollments may keep `academic_term_id` null permanently; completion does not mutate the enrollment merely to support reporting.
+- Completion-date grouping uses the durable AcademicRecord/enrollment completion date. It is reporting context and does not convert the enrollment into a term-bound record.
+- Automatic reporting candidates are only standard `fall`, `spring`, `summer`, and `winter` terms. `intensive`, `module`, and `custom` terms do not automatically claim completion-date coursework.
+- Exactly one standard term must contain the completion date inclusively. Zero matches return `no_match`; multiple matches return `ambiguous`. Both outcomes are explicit registrar-review conditions and never choose an arbitrary overlapping term or create a term.
+- Official transcript issuance resolves completion-date records before creating lines. Unresolved records prevent silent issuance; issued `term_label` values remain durable snapshots and are never re-resolved during rendering.
+- AcademicRecord remains durable and may have a nullable `academic_term_id` for non-term completion. Completion continues through `EnrollmentCompletionService`, with existing guarded eligibility and audit snapshots.
+
 ### Intentionally deferred
 
 - Student self-service availability and separate late-registration/add/drop policies.

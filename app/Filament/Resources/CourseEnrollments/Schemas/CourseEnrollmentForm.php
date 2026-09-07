@@ -72,6 +72,7 @@ class CourseEnrollmentForm
                                     ->getOptionLabelFromRecordUsing(fn (Course $record): string => "{$record->code} — {$record->title}")
                                     ->searchable()
                                     ->preload()
+                                    ->live()
                                     ->required()
                                     ->helperText('Used for legacy/manual enrollments when no course offering is selected.'),
                                 Select::make('academic_term_id')
@@ -81,8 +82,8 @@ class CourseEnrollmentForm
                                     ->live()
                                     ->searchable()
                                     ->preload()
-                                    ->required()
-                                    ->helperText('Used for legacy/manual enrollments when no course offering is selected.'),
+                                    ->required(fn (Get $get): bool => self::selectedCourseRequiresTerm($get))
+                                    ->helperText(fn (Get $get): string => self::termContextHelperText($get)),
                                 Placeholder::make('registration_window_notice')
                                     ->label('Registration today (advisory)')
                                     ->content(function (Get $get): string {
@@ -99,14 +100,7 @@ class CourseEnrollmentForm
                                     })
                                     ->columnSpanFull(),
                                 Select::make('status')
-                                    ->options([
-                                        'enrolled' => 'Enrolled',
-                                        'dropped' => 'Dropped',
-                                        'withdrawn' => 'Withdrawn',
-                                        'completed' => 'Completed',
-                                        'failed' => 'Failed',
-                                        'incomplete' => 'Incomplete',
-                                    ])
+                                    ->options(CourseEnrollment::statusOptions())
                                     ->required(),
                                 TextInput::make('final_grade')
                                     ->label('Final grade')
@@ -211,6 +205,24 @@ class CourseEnrollmentForm
                             ]),
                     ]),
             ]);
+    }
+
+    protected static function selectedCourseRequiresTerm(Get $get): bool
+    {
+        $course = Course::query()->find($get('course_id'));
+
+        return ! $course || ! $course->isCompletionDateGrouped();
+    }
+
+    protected static function termContextHelperText(Get $get): string
+    {
+        $course = Course::query()->find($get('course_id'));
+
+        if ($course?->isCompletionDateGrouped()) {
+            return 'Optional for completion-date grouped coursework. Reporting term is resolved from the durable completion date.';
+        }
+
+        return 'Used for term-bound and legacy/manual enrollments when no course offering is selected.';
     }
 
     protected static function reviewerSummary(?CourseEnrollment $record): string

@@ -12,6 +12,19 @@ class Course extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const SCHEDULING_BASIS_TERM = 'term';
+
+    public const SCHEDULING_BASIS_COMPLETION_DATE = 'completion_date';
+
+    public const SCHEDULING_BASIS_OPTIONS = [
+        self::SCHEDULING_BASIS_TERM => 'Term-bound',
+        self::SCHEDULING_BASIS_COMPLETION_DATE => 'Completion-date grouped',
+    ];
+
+    protected $attributes = [
+        'scheduling_basis' => self::SCHEDULING_BASIS_TERM,
+    ];
+
     protected $fillable = [
         'uuid',
         'institution_id',
@@ -21,12 +34,23 @@ class Course extends BaseModel
         'description',
         'credit_hours',
         'delivery_method',
+        'scheduling_basis',
         'status',
         'is_public',
         'seo_title',
         'seo_description',
         'published_at',
     ];
+
+    public static function schedulingBasisOptions(): array
+    {
+        return self::SCHEDULING_BASIS_OPTIONS;
+    }
+
+    public function isCompletionDateGrouped(): bool
+    {
+        return $this->scheduling_basis === self::SCHEDULING_BASIS_COMPLETION_DATE;
+    }
 
     protected $casts = [
         'credit_hours' => 'decimal:2',

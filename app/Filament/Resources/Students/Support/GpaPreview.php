@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Students\Support;
 
 use App\Models\AcademicRecord;
 use App\Models\Student;
+use App\Support\AcademicTerms\ReportingTermResolver;
 use Filament\Actions\Action;
 use Illuminate\Support\Collection;
 
@@ -37,6 +38,7 @@ class GpaPreview
             'institution',
             'program',
             'academicRecords.academicTerm',
+            'academicRecords.course',
             'academicRecords.gradeScale',
             'academicRecords.gradeValue',
         ]);
@@ -48,6 +50,9 @@ class GpaPreview
                 fn (AcademicRecord $record) => $record->course_title,
             ])
             ->values();
+
+        $resolver = app(ReportingTermResolver::class);
+        $reportingTerms = $records->mapWithKeys(fn (AcademicRecord $record): array => [$record->id => $resolver->resolveAcademicRecord($record)]);
 
         $includedRecords = $records
             ->filter(fn (AcademicRecord $record): bool => self::isCompleteGpaBearingRecord($record))
@@ -81,17 +86,18 @@ class GpaPreview
             ->values();
 
         $termGroups = $includedRecords
-            ->filter(fn (AcademicRecord $record) => $record->academicTerm !== null)
-            ->groupBy(fn (AcademicRecord $record) => (string) $record->academic_term_id)
-            ->map(function (Collection $group): array {
+            ->filter(fn (AcademicRecord $record): bool => $reportingTerms[$record->id]['term'] !== null || $record->course?->isCompletionDateGrouped())
+            ->groupBy(fn (AcademicRecord $record) => (string) ($reportingTerms[$record->id]['term']?->id ?? 'unresolved-'.$reportingTerms[$record->id]['status']))
+            ->map(function (Collection $group) use ($reportingTerms): array {
                 /** @var AcademicRecord $firstRecord */
                 $firstRecord = $group->first();
-                $term = $firstRecord->academicTerm;
+                $resolution = $reportingTerms[$firstRecord->id];
+                $term = $resolution['term'];
                 $termCredits = (float) $group->sum(fn (AcademicRecord $record) => (float) ($record->credits_attempted ?? 0));
                 $termQualityPoints = (float) $group->sum(fn (AcademicRecord $record) => self::calculateQualityPoints($record));
 
                 return [
-                    'label' => $term ? $term->display_label : 'Academic Term',
+                    'label' => $term?->display_label ?? ($resolution['message'] ?? 'Reporting term unresolved'),
                     'records' => $group,
                     'gpaCredits' => $termCredits,
                     'qualityPoints' => $termQualityPoints,
@@ -101,7 +107,7 @@ class GpaPreview
             ->values();
 
         $otherIncludedRecords = $includedRecords
-            ->filter(fn (AcademicRecord $record) => $record->academicTerm === null)
+            ->filter(fn (AcademicRecord $record): bool => $reportingTerms[$record->id]['term'] === null && ! $record->course?->isCompletionDateGrouped())
             ->values();
 
         $totalGpaCredits = (float) $includedRecords->sum(fn (AcademicRecord $record) => (float) ($record->credits_attempted ?? 0));
