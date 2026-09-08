@@ -9,9 +9,7 @@ use App\Models\OfficialTranscript;
 use App\Support\AcademicTerms\ReportingTermResolver;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -45,7 +43,7 @@ class OfficialTranscriptsTable
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => OfficialTranscriptForm::STATUS_OPTIONS[$state] ?? $state)
+                    ->formatStateUsing(fn (string $state): string => OfficialTranscript::statusOptions()[$state] ?? $state)
                     ->color(fn (string $state): string => match ($state) {
                         'issued' => 'success',
                         'voided' => 'danger',
@@ -71,7 +69,7 @@ class OfficialTranscriptsTable
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->options(OfficialTranscriptForm::STATUS_OPTIONS),
+                    ->options(OfficialTranscript::statusOptions()),
                 SelectFilter::make('delivery_method')
                     ->options(OfficialTranscriptForm::DELIVERY_METHOD_OPTIONS),
                 Filter::make('requested_at')
@@ -254,8 +252,6 @@ class OfficialTranscriptsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
             ]);

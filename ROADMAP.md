@@ -69,6 +69,13 @@
 - Registrar edit surfaces protect durable outcome fields while retaining notes management, and unsafe hard-delete actions are not exposed.
 - Official transcript lines remain separate issuance snapshots and are not rewritten by later academic-record changes.
 
+## Transcript Engine: Complete
+
+- Existing OfficialTranscript and OfficialTranscriptLine layers remain intact, with issuance as the transactional snapshot boundary.
+- Issued rendering uses durable transcript lines; preview remains current-state and advisory.
+- Direct term context, completion-date reporting resolution, deterministic ordering, GPA snapshots, and unresolved-term issuance safeguards are preserved.
+- Issued transcript history is protected from routine force deletion and mutable upstream changes.
+
 ## Outside the Completed Academic Terms Goal
 
 Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

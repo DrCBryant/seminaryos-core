@@ -75,6 +75,15 @@
 - `AcademicRecord` and `OfficialTranscriptLine` are separate durable layers. Transcript issuance reads AcademicRecord and snapshots the resolved label and outcome into OfficialTranscriptLine; later AcademicRecord or upstream changes do not rewrite issued lines.
 - Ordinary registrar edit surfaces protect completion-derived fields after creation. Notes remain administrative metadata. Existing manual/import creation remains available for historical records; future correction of finalized outcomes should use an explicit amendment workflow rather than silent edits.
 
+## Transcript Engine
+
+- `AcademicRecord` is source academic history, while `OfficialTranscriptLine` is the durable snapshot created at official issuance. Issuance is the durability boundary and runs transactionally with transcript metadata and line creation.
+- Draft, requested, and under-review transcripts may be prepared from current AcademicRecords. Issued transcripts are finalized historical documents; ordinary edits, force deletion, and line regeneration are not available for issued history. A later eligible issuance creates a new snapshot for that transcript record according to the existing lifecycle.
+- Term-bound records use their direct AcademicTerm. Completion-date records use `ReportingTermResolver` and durable `completed_at`; specialized terms are ignored, and no-match or ambiguous results block silent issuance.
+- Transcript ordering is deterministic by reporting-term chronology, then course code and title. Preview remains advisory/current-state, while issued rendering uses OfficialTranscriptLine snapshot values exclusively.
+- GPA presentation uses stored AcademicRecord `affects_gpa`, `grade_points`, and `credits_attempted` semantics. Non-GPA academic outcomes remain represented according to their stored status and transcript grouping.
+- Transcript output remains browser-rendered/printable with the existing client-side export path; no server-side binary PDF infrastructure or external delivery service is introduced.
+
 ### Intentionally deferred
 
 - Student self-service availability and separate late-registration/add/drop policies.

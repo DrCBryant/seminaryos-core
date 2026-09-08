@@ -13,6 +13,15 @@ class OfficialTranscript extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const STATUS_OPTIONS = [
+        'draft' => 'Draft',
+        'requested' => 'Requested',
+        'under_review' => 'Under Review',
+        'issued' => 'Issued',
+        'voided' => 'Voided',
+        'archived' => 'Archived',
+    ];
+
     protected $fillable = [
         'institution_id',
         'uuid',
@@ -33,6 +42,11 @@ class OfficialTranscript extends BaseModel
         'requested_at' => 'datetime',
         'issued_at' => 'datetime',
     ];
+
+    public static function statusOptions(): array
+    {
+        return self::STATUS_OPTIONS;
+    }
 
     public function institution(): BelongsTo
     {
