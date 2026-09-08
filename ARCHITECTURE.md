@@ -58,6 +58,14 @@
 - Teaching assignments may be direct/manual. Completion-date courses may retain a null `academic_term_id`; faculty administration does not force a conventional term onto non-term coursework.
 - Faculty and assignment history remains inspectable through soft-delete/inactive semantics. Routine hard-delete actions are not exposed where foreign-key cascades would erase historical assignment context.
 
+## Applicant-to-Student Conversion
+
+- `Applicant` is the durable admissions record and remains preserved after conversion. `Student` is the academic identity created for accepted applicants; the records are linked through the unique `students.applicant_id` relationship.
+- Conversion is available only for accepted applicants and runs transactionally. It preserves institution, program, name, contact, and admissions notes, assigns an active student number, and records the conversion date without creating courses, enrollments, academic records, or transcript lines.
+- Conversion is idempotent: a linked Student is returned on repeat attempts, while an existing same-institution student email requires registrar review instead of guessing or creating a duplicate.
+- Applicant status changes to `enrolled` only after the Student exists. The Applicant record and its historical status/conversion timestamp remain inspectable through the registrar UI.
+- Conversion does not assign an AcademicTerm or infer academic standing. Subsequent academic enrollment and durable academic records remain separate registrar actions.
+
 ### Intentionally deferred
 
 - Student self-service availability and separate late-registration/add/drop policies.

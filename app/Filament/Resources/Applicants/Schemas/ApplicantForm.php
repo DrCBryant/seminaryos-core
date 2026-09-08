@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\Applicants\Schemas;
 
+use App\Models\Applicant;
 use App\Models\Program;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -46,20 +48,20 @@ class ApplicantForm
                                     ->preload()
                                     ->required(),
                                 Select::make('status')
-                                    ->options([
-                                        'inquiry' => 'Inquiry',
-                                        'applied' => 'Applied',
-                                        'under_review' => 'Under Review',
-                                        'accepted' => 'Accepted',
-                                        'denied' => 'Denied',
-                                        'enrolled' => 'Enrolled',
-                                    ])
+                                    ->options(Applicant::statusOptions())
                                     ->required(),
                                 DateTimePicker::make('submitted_at')
                                     ->seconds(false),
                             ]),
                         Textarea::make('notes')
                             ->rows(5)
+                            ->columnSpanFull(),
+                        Placeholder::make('conversion_status')
+                            ->label('Student conversion')
+                            ->content(fn (Applicant $record): string => $record->student
+                                ? "Converted on {$record->converted_at?->format('M j, Y g:i A')} — Student {$record->student->student_number}"
+                                : 'Not converted to a Student.')
+                            ->visible(fn (?Applicant $record): bool => $record !== null)
                             ->columnSpanFull(),
                     ]),
             ]);

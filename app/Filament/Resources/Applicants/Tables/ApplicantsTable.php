@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Applicants\Tables;
 
 use App\Models\Applicant;
-use App\Models\Student;
+use App\Support\Admissions\ApplicantStudentConversionService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -15,14 +15,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ApplicantsTable
 {
-    protected const CONVERTIBLE_STATUS = 'accepted';
-
     public static function configure(Table $table): Table
     {
         return $table
@@ -44,6 +40,7 @@ class ApplicantsTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('status')
+                    ->formatStateUsing(fn (string $state): string => Applicant::statusOptions()[$state] ?? $state)
                     ->badge()
                     ->sortable(),
                 TextColumn::make('submitted_at')
@@ -57,14 +54,7 @@ class ApplicantsTable
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('status')
-                    ->options([
-                        'inquiry' => 'Inquiry',
-                        'applied' => 'Applied',
-                        'under_review' => 'Under Review',
-                        'accepted' => 'Accepted',
-                        'denied' => 'Denied',
-                        'enrolled' => 'Enrolled',
-                    ])
+                    ->options(Applicant::statusOptions())
                     ->multiple(),
                 TrashedFilter::make(),
             ])
@@ -74,52 +64,28 @@ class ApplicantsTable
                     ->label('Convert to Student')
                     ->icon('heroicon-o-academic-cap')
                     ->color('success')
-                    ->visible(fn (Applicant $record): bool => $record->status === self::CONVERTIBLE_STATUS)
+                    ->visible(fn (Applicant $record): bool => $record->status === 'accepted')
                     ->requiresConfirmation()
                     ->modalHeading('Convert applicant to student')
                     ->modalDescription('This will create a student record, set the student as active, and update the applicant status to enrolled.')
                     ->action(function (Applicant $record): void {
-                        $existingStudent = Student::query()
-                            ->where('institution_id', $record->institution_id)
-                            ->where('email', $record->email)
-                            ->first();
-
-                        if ($existingStudent) {
+                        try {
+                            $result = app(ApplicantStudentConversionService::class)->convert($record);
+                        } catch (ValidationException $exception) {
                             Notification::make()
-                                ->title('Student already exists')
-                                ->body('A student with this institution and email already exists. No duplicate student was created.')
+                                ->title('Conversion requires registrar review')
+                                ->body((string) (collect($exception->errors())->flatten()->first() ?? 'The applicant could not be converted.'))
                                 ->warning()
                                 ->send();
 
                             return;
                         }
 
-                        DB::transaction(function () use ($record): void {
-                            $student = Student::create([
-                                'institution_id' => $record->institution_id,
-                                'program_id' => $record->program_id,
-                                'applicant_id' => $record->id,
-                                'first_name' => $record->first_name,
-                                'last_name' => $record->last_name,
-                                'email' => $record->email,
-                                'phone' => $record->phone,
-                                'student_number' => self::generateStudentNumber($record),
-                                'status' => 'active',
-                                'enrollment_date' => Carbon::today(),
-                                'notes' => $record->notes,
-                            ]);
-
-                            $record->forceFill([
-                                'status' => 'enrolled',
-                                'converted_at' => now(),
-                            ])->save();
-
-                            Notification::make()
-                                ->title('Applicant converted to student')
-                                ->body("{$student->full_name} was created as an active student and the applicant was updated to enrolled.")
-                                ->success()
-                                ->send();
-                        });
+                        Notification::make()
+                            ->title($result['already_converted'] ? 'Applicant already converted' : 'Applicant converted to student')
+                            ->body("{$result['student']->full_name} — Student {$result['student']->student_number}")
+                            ->success()
+                            ->send();
                     }),
             ])
             ->toolbarActions([
@@ -129,22 +95,5 @@ class ApplicantsTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
-    }
-
-    protected static function generateStudentNumber(Applicant $applicant): string
-    {
-        do {
-            $studentNumber = sprintf(
-                'S-%d-%s-%s',
-                $applicant->institution_id,
-                now()->format('Ymd'),
-                Str::upper(Str::random(6)),
-            );
-        } while (Student::query()
-            ->where('institution_id', $applicant->institution_id)
-            ->where('student_number', $studentNumber)
-            ->exists());
-
-        return $studentNumber;
     }
 }

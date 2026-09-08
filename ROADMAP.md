@@ -54,6 +54,13 @@
 - Completion-date coursework may use direct assignments without an artificial AcademicTerm.
 - Hard-delete actions that could erase assignment history were removed from Faculty and TeachingAssignment administration.
 
+## Applicant-to-Student Conversion: Complete
+
+- Accepted applicants convert transactionally into one linked Student while the Applicant admissions record is preserved.
+- Conversion is idempotent and duplicate-safe, with same-institution email collisions surfaced for registrar review.
+- Institution, program, identity, contact, notes, student number, active status, and conversion date are preserved without academic side effects.
+- Existing registrar Applicant management exposes conversion status and the guarded conversion action.
+
 ## Outside the Completed Academic Terms Goal
 
 Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

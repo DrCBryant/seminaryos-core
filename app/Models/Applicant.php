@@ -14,6 +14,15 @@ class Applicant extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const STATUS_OPTIONS = [
+        'inquiry' => 'Inquiry',
+        'applied' => 'Applied',
+        'under_review' => 'Under Review',
+        'accepted' => 'Accepted',
+        'denied' => 'Denied',
+        'enrolled' => 'Enrolled',
+    ];
+
     protected $fillable = [
         'uuid',
         'institution_id',
@@ -33,6 +42,11 @@ class Applicant extends BaseModel
         'submitted_at' => 'datetime',
         'converted_at' => 'datetime',
     ];
+
+    public static function statusOptions(): array
+    {
+        return self::STATUS_OPTIONS;
+    }
 
     protected function fullName(): Attribute
     {
