@@ -61,6 +61,14 @@
 - Institution, program, identity, contact, notes, student number, active status, and conversion date are preserved without academic side effects.
 - Existing registrar Applicant management exposes conversion status and the guarded conversion action.
 
+## Academic Records: Complete
+
+- AcademicRecord remains the durable completed-course result created through guarded enrollment completion.
+- Course, grade, credit, completion, GPA, and provenance snapshots are preserved independently from mutable upstream definitions.
+- Term-bound records retain direct AcademicTerm context; completion-date records preserve nullable term context and resolve reporting context without mutation.
+- Registrar edit surfaces protect durable outcome fields while retaining notes management, and unsafe hard-delete actions are not exposed.
+- Official transcript lines remain separate issuance snapshots and are not rewritten by later academic-record changes.
+
 ## Outside the Completed Academic Terms Goal
 
 Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

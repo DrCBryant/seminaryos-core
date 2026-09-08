@@ -66,6 +66,15 @@
 - Applicant status changes to `enrolled` only after the Student exists. The Applicant record and its historical status/conversion timestamp remain inspectable through the registrar UI.
 - Conversion does not assign an AcademicTerm or infer academic standing. Subsequent academic enrollment and durable academic records remain separate registrar actions.
 
+## Academic Records
+
+- `AcademicRecord` is the durable academic outcome for completed coursework. `EnrollmentCompletionService` is the normal creation path, and its enrollment-level guard prevents a second record for the same `CourseEnrollment`.
+- Completion copies historical snapshots such as course code/title, attempted and earned credits, final grade, grade label, grade points, credit/pass/GPA flags, status, and completion date. These values remain authoritative even if Course, GradeValue, GradeScale, AcademicTerm, Student, or CourseEnrollment data later changes.
+- Foreign keys to Student, Course, AcademicTerm, GradeScale, GradeValue, and CourseEnrollment provide navigation and provenance. They do not authorize rewriting the stored academic outcome. Historical or imported records may remain detached from an enrollment where the nullable relationship supports that existing use.
+- Term-bound records preserve the completed enrollment's direct `academic_term_id`. Completion-date records may retain a null term and use `ReportingTermResolver` only for contextual reporting from durable `completed_at`; resolution never mutates the AcademicRecord or creates a fake term.
+- `AcademicRecord` and `OfficialTranscriptLine` are separate durable layers. Transcript issuance reads AcademicRecord and snapshots the resolved label and outcome into OfficialTranscriptLine; later AcademicRecord or upstream changes do not rewrite issued lines.
+- Ordinary registrar edit surfaces protect completion-derived fields after creation. Notes remain administrative metadata. Existing manual/import creation remains available for historical records; future correction of finalized outcomes should use an explicit amendment workflow rather than silent edits.
+
 ### Intentionally deferred
 
 - Student self-service availability and separate late-registration/add/drop policies.

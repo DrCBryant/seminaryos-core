@@ -2,13 +2,12 @@
 
 namespace App\Filament\Resources\AcademicRecords\Tables;
 
-use App\Filament\Resources\AcademicRecords\Schemas\AcademicRecordForm;
+use App\Models\AcademicRecord;
 use App\Models\AcademicTerm;
 use App\Models\Student;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -38,6 +37,9 @@ class AcademicRecordsTable
                     ->label('Term')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('courseEnrollment.uuid')
+                    ->label('Source enrollment')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('final_grade')
                     ->label('Final grade')
                     ->sortable(),
@@ -64,7 +66,7 @@ class AcademicRecordsTable
                     ->boolean(),
                 TextColumn::make('status')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => AcademicRecordForm::STATUS_OPTIONS[$state] ?? $state)
+                    ->formatStateUsing(fn (string $state): string => AcademicRecord::statusOptions()[$state] ?? $state)
                     ->sortable(),
                 TextColumn::make('completed_at')
                     ->label('Completed date')
@@ -90,7 +92,7 @@ class AcademicRecordsTable
                         ->all())
                     ->searchable(),
                 SelectFilter::make('status')
-                    ->options(AcademicRecordForm::STATUS_OPTIONS),
+                    ->options(AcademicRecord::statusOptions()),
                 SelectFilter::make('final_grade')
                     ->label('Final grade')
                     ->options([
@@ -129,7 +131,6 @@ class AcademicRecordsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
             ]);

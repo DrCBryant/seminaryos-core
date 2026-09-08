@@ -74,5 +74,11 @@ class NonTermCourseEnrollmentTest extends TestCase
         $this->assertNull($enrollment->academicRecord->academic_term_id);
         $this->assertSame('2026-09-15', $enrollment->academicRecord->completed_at->toDateString());
         $this->assertSame(1, AcademicRecord::query()->where('course_enrollment_id', $enrollment->id)->count());
+
+        $course->update(['code' => 'KAI-999', 'title' => 'Renamed Formation']);
+        $record = $enrollment->academicRecord->fresh();
+
+        $this->assertSame('KAI-101', $record->course_code);
+        $this->assertSame('Kairos Formation', $record->course_title);
     }
 }

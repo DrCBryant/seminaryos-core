@@ -13,6 +13,15 @@ class AcademicRecord extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const STATUS_OPTIONS = [
+        'in_progress' => 'In Progress',
+        'completed' => 'Completed',
+        'failed' => 'Failed',
+        'withdrawn' => 'Withdrawn',
+        'transfer' => 'Transfer',
+        'waived' => 'Waived',
+    ];
+
     protected $fillable = [
         'institution_id',
         'uuid',
@@ -46,6 +55,11 @@ class AcademicRecord extends BaseModel
         'is_passing' => 'boolean',
         'completed_at' => 'date',
     ];
+
+    public static function statusOptions(): array
+    {
+        return self::STATUS_OPTIONS;
+    }
 
     public function institution(): BelongsTo
     {
