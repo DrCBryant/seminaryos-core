@@ -12,6 +12,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Arr;
+use Illuminate\Validation\ValidationException;
 
 class OfficialTranscriptForm
 {
@@ -23,6 +25,25 @@ class OfficialTranscriptForm
         'postal_mail' => 'Postal Mail',
         'other' => 'Other',
     ];
+
+    /** @param array<string, mixed> $data */
+    public static function validateForSave(array $data): void
+    {
+        if (($data['status'] ?? null) === 'issued') {
+            throw ValidationException::withMessages(['data.status' => 'Use Issue Transcript to finalize an official transcript.']);
+        }
+
+        $institutionId = $data['institution_id'];
+        $currentInstitutionId = auth()->user()?->current_institution_id;
+
+        if ($currentInstitutionId !== null && (int) $institutionId !== (int) $currentInstitutionId) {
+            throw ValidationException::withMessages(['data.institution_id' => 'Select your current institution.']);
+        }
+
+        if (! Student::query()->where('institution_id', $institutionId)->whereKey($data['student_id'])->exists()) {
+            throw ValidationException::withMessages(['data.student_id' => 'Select a student from the transcript institution.']);
+        }
+    }
 
     public static function configure(Schema $schema): Schema
     {
@@ -55,7 +76,9 @@ class OfficialTranscriptForm
                                     ->maxLength(255)
                                     ->disabled($issued),
                                 Select::make('status')
-                                    ->options(OfficialTranscript::statusOptions())
+                                    ->options(fn (?OfficialTranscript $record): array => $issued($record)
+                                        ? OfficialTranscript::statusOptions()
+                                        : Arr::except(OfficialTranscript::statusOptions(), ['issued']))
                                     ->default('draft')
                                     ->required()
                                     ->disabled($issued),

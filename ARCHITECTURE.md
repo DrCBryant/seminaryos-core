@@ -78,7 +78,9 @@
 ## Transcript Engine
 
 - `AcademicRecord` is source academic history, while `OfficialTranscriptLine` is the durable snapshot created at official issuance. Issuance is the durability boundary and runs transactionally with transcript metadata and line creation.
-- Draft, requested, and under-review transcripts may be prepared from current AcademicRecords. Issued transcripts are finalized historical documents; ordinary edits, force deletion, and line regeneration are not available for issued history. A later eligible issuance creates a new snapshot for that transcript record according to the existing lifecycle.
+- The Official Transcripts issue action is the registrar finalization path. Ordinary create/edit cannot set issued status. Issuance locks and rechecks the current transcript and its eligibility before writing snapshots. Competing requests preserve the first successful issuance.
+- Use the **Issued without snapshot lines** filter in Official Transcripts to identify legacy issued records with no visible line snapshots for registrar review. The filter does not repair or reissue them.
+- Draft, requested, and under-review transcripts may be prepared from current AcademicRecords. Issued transcripts are finalized historical documents. Ordinary edits support administrative notes only, and the resource protects issued history from deletion and line regeneration. A later eligible issuance creates a new snapshot for that transcript record according to the existing lifecycle.
 - Term-bound records use their direct AcademicTerm. Completion-date records use `ReportingTermResolver` and durable `completed_at`; specialized terms are ignored, and no-match or ambiguous results block silent issuance.
 - Transcript ordering is deterministic by reporting-term chronology, then course code and title. Preview remains advisory/current-state, while issued rendering uses OfficialTranscriptLine snapshot values exclusively.
 - GPA presentation uses stored AcademicRecord `affects_gpa`, `grade_points`, and `credits_attempted` semantics. Non-GPA academic outcomes remain represented according to their stored status and transcript grouping.

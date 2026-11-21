@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\OfficialTranscripts\Tables;
 
+use App\Core\Scopes\InstitutionScope;
+use App\Filament\Resources\OfficialTranscripts\OfficialTranscriptResource;
 use App\Filament\Resources\OfficialTranscripts\Schemas\OfficialTranscriptForm;
 use App\Filament\Resources\OfficialTranscripts\Support\OfficialTranscriptView;
 use App\Models\AcademicRecord;
@@ -21,8 +23,8 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class OfficialTranscriptsTable
@@ -78,6 +80,9 @@ class OfficialTranscriptsTable
                 Filter::make('issued_at')
                     ->label('Issued date')
                     ->query(fn ($query) => $query->whereNotNull('issued_at')),
+                Filter::make('issued_without_lines')
+                    ->label('Issued without snapshot lines')
+                    ->query(fn (Builder $query): Builder => $query->where('status', 'issued')->whereDoesntHave('lines')),
                 TrashedFilter::make(),
             ])
             ->recordActions([
@@ -86,6 +91,7 @@ class OfficialTranscriptsTable
                     ->label('Issue Transcript')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
+                    ->authorize(fn (OfficialTranscript $record): bool => OfficialTranscriptResource::canEdit($record))
                     ->visible(fn (OfficialTranscript $record): bool => in_array($record->status, self::ISSUABLE_STATUSES, true))
                     ->modalHeading('Issue official transcript')
                     ->modalDescription('This will mark the transcript as issued without generating a PDF or sending email.')
@@ -118,129 +124,9 @@ class OfficialTranscriptsTable
                             ->rows(4),
                     ])
                     ->action(function (OfficialTranscript $record, array $data): void {
-                        if ($record->status === 'issued') {
-                            Notification::make()
-                                ->title('Transcript already issued')
-                                ->body('Issued transcripts are locked and their snapshot lines will not be regenerated.')
-                                ->warning()
-                                ->send();
-
+                        if (! self::issue($record->getKey(), $data)) {
                             return;
                         }
-
-                        $record->loadMissing('student.academicRecords.academicTerm', 'student.academicRecords.course', 'lines');
-
-                        if ($record->student->academicRecords->isEmpty()) {
-                            Notification::make()
-                                ->title('Transcript cannot be issued')
-                                ->body('The student has no academic records, so this official transcript cannot be issued yet.')
-                                ->warning()
-                                ->send();
-
-                            return;
-                        }
-
-                        /** @var Collection<int, AcademicRecord> $academicRecords */
-                        $academicRecords = $record->student->academicRecords
-                            ->sortBy([
-                                fn (AcademicRecord $academicRecord) => $academicRecord->academicTerm?->start_date?->timestamp ?? PHP_INT_MAX,
-                                fn (AcademicRecord $academicRecord) => $academicRecord->course_code,
-                                fn (AcademicRecord $academicRecord) => $academicRecord->course_title,
-                            ])
-                            ->values();
-
-                        $resolver = app(ReportingTermResolver::class);
-                        $reportingTerms = [];
-
-                        foreach ($academicRecords as $academicRecord) {
-                            $resolution = $resolver->resolveAcademicRecord($academicRecord);
-
-                            if ($resolution['status'] !== ReportingTermResolver::RESOLVED) {
-                                Notification::make()
-                                    ->title('Transcript cannot be issued')
-                                    ->body($resolution['message'] ?? 'A reporting term requires registrar resolution before issuance.')
-                                    ->warning()
-                                    ->send();
-
-                                return;
-                            }
-
-                            $reportingTerms[$academicRecord->id] = $resolution['term'];
-                        }
-
-                        $transcriptNumber = filled($data['transcript_number'] ?? null)
-                            ? trim((string) $data['transcript_number'])
-                            : self::generateTranscriptNumber($record);
-
-                        $duplicateExists = OfficialTranscript::query()
-                            ->where('institution_id', $record->institution_id)
-                            ->where('transcript_number', $transcriptNumber)
-                            ->whereKeyNot($record->getKey())
-                            ->exists();
-
-                        if ($duplicateExists) {
-                            Notification::make()
-                                ->title('Transcript number already exists')
-                                ->body('Another official transcript already uses this transcript number in the same institution.')
-                                ->warning()
-                                ->send();
-
-                            return;
-                        }
-
-                        DB::transaction(function () use ($record, $data, $transcriptNumber, $academicRecords, $reportingTerms): void {
-                            if (in_array($record->status, self::ISSUABLE_STATUSES, true) && $record->lines()->exists()) {
-                                $record->lines()->delete();
-                            }
-
-                            $sortOrder = 1;
-
-                            $record->lines()->createMany(
-                                $academicRecords
-                                    ->sortBy(fn (AcademicRecord $academicRecord) => $reportingTerms[$academicRecord->id]?->start_date?->timestamp ?? PHP_INT_MAX)
-                                    ->values()
-                                    ->map(function (AcademicRecord $academicRecord) use (&$sortOrder, $record, $reportingTerms): array {
-                                        $term = $reportingTerms[$academicRecord->id];
-
-                                        return [
-                                            'institution_id' => $record->institution_id,
-                                            'academic_record_id' => $academicRecord->id,
-                                            'student_id' => $academicRecord->student_id,
-                                            'academic_term_id' => $term?->id,
-                                            'term_label' => $term?->display_label,
-                                            'course_code' => $academicRecord->course_code,
-                                            'course_title' => $academicRecord->course_title,
-                                            'credits_attempted' => $academicRecord->credits_attempted,
-                                            'credits_earned' => $academicRecord->credits_earned,
-                                            'final_grade' => $academicRecord->final_grade,
-                                            'grade_label' => $academicRecord->grade_label,
-                                            'grade_points' => $academicRecord->grade_points,
-                                            'status' => $academicRecord->status,
-                                            'completed_at' => $academicRecord->completed_at,
-                                            'sort_order' => $sortOrder++,
-                                            'notes' => $academicRecord->notes,
-                                        ];
-                                    })
-                                    ->all(),
-                            );
-
-                            $record->forceFill([
-                                'transcript_number' => $transcriptNumber,
-                                'status' => 'issued',
-                                'purpose' => $data['purpose'] ?: null,
-                                'issued_at' => $data['issued_at'],
-                                'recipient_name' => $data['recipient_name'] ?: null,
-                                'recipient_email' => $data['recipient_email'] ?: null,
-                                'delivery_method' => $data['delivery_method'],
-                                'registrar_notes' => $data['registrar_notes'] ?: null,
-                            ]);
-
-                            if (! $record->requested_at) {
-                                $record->requested_at = null;
-                            }
-
-                            $record->save();
-                        });
 
                         Notification::make()
                             ->title('Official transcript issued')
@@ -257,6 +143,149 @@ class OfficialTranscriptsTable
             ]);
     }
 
+    /** @param array<string, mixed> $data */
+    protected static function issue(int $transcriptId, array $data): bool
+    {
+        return DB::transaction(function () use ($transcriptId, $data): bool {
+            $record = OfficialTranscript::query()->lockForUpdate()->findOrFail($transcriptId);
+            abort_unless(auth()->check() && OfficialTranscriptResource::canEdit($record), 403);
+
+            if (! in_array($record->status, self::ISSUABLE_STATUSES, true)) {
+                Notification::make()
+                    ->title('Transcript cannot be issued')
+                    ->body('The transcript is no longer eligible for issuance.')
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+
+            $student = $record->student()->where('institution_id', $record->institution_id)->first();
+            $academicRecords = $student?->academicRecords()
+                ->where('institution_id', $record->institution_id)
+                ->with([
+                    'academicTerm' => fn ($query) => $query->withoutGlobalScope(InstitutionScope::class),
+                    'course' => fn ($query) => $query->withoutGlobalScope(InstitutionScope::class),
+                ])
+                ->get();
+
+            if ($academicRecords === null || $academicRecords->isEmpty()) {
+                Notification::make()
+                    ->title('Transcript cannot be issued')
+                    ->body('The student has no academic records, so this official transcript cannot be issued yet.')
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+
+            $resolver = app(ReportingTermResolver::class);
+            $reportingTerms = [];
+
+            foreach ($academicRecords as $academicRecord) {
+                if (($academicRecord->course && $academicRecord->course->institution_id !== $record->institution_id)
+                    || ($academicRecord->academicTerm && $academicRecord->academicTerm->institution_id !== $record->institution_id)) {
+                    Notification::make()
+                        ->title('Transcript cannot be issued')
+                        ->body('An academic record refers to data from another institution.')
+                        ->warning()
+                        ->send();
+
+                    return false;
+                }
+
+                $resolution = $resolver->resolveAcademicRecord($academicRecord);
+
+                if ($resolution['status'] !== ReportingTermResolver::RESOLVED) {
+                    Notification::make()
+                        ->title('Transcript cannot be issued')
+                        ->body($resolution['message'] ?? 'A reporting term requires registrar resolution before issuance.')
+                        ->warning()
+                        ->send();
+
+                    return false;
+                }
+
+                $reportingTerms[$academicRecord->id] = $resolution['term'];
+            }
+
+            $transcriptNumber = filled($data['transcript_number'] ?? null)
+                ? trim((string) $data['transcript_number'])
+                : self::generateTranscriptNumber($record);
+
+            $duplicateExists = OfficialTranscript::query()
+                ->withTrashed()
+                ->where('institution_id', $record->institution_id)
+                ->where('transcript_number', $transcriptNumber)
+                ->whereKeyNot($record->getKey())
+                ->exists();
+
+            if ($duplicateExists) {
+                Notification::make()
+                    ->title('Transcript number already exists')
+                    ->body('Another official transcript already uses this transcript number in the same institution.')
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+
+            $record->lines()->delete();
+
+            $sortOrder = 1;
+
+            $record->lines()->createMany(
+                $academicRecords
+                    ->sortBy([
+                        fn (AcademicRecord $left, AcademicRecord $right): int => ($reportingTerms[$left->id]?->start_date?->timestamp ?? PHP_INT_MAX)
+                            <=> ($reportingTerms[$right->id]?->start_date?->timestamp ?? PHP_INT_MAX),
+                        ['course_code', 'asc'],
+                        ['course_title', 'asc'],
+                        ['id', 'asc'],
+                    ])
+                    ->values()
+                    ->map(function (AcademicRecord $academicRecord) use (&$sortOrder, $record, $reportingTerms): array {
+                        $term = $reportingTerms[$academicRecord->id];
+
+                        return [
+                            'institution_id' => $record->institution_id,
+                            'academic_record_id' => $academicRecord->id,
+                            'student_id' => $academicRecord->student_id,
+                            'academic_term_id' => $term?->id,
+                            'term_label' => $term?->display_label,
+                            'course_code' => $academicRecord->course_code,
+                            'course_title' => $academicRecord->course_title,
+                            'credits_attempted' => $academicRecord->credits_attempted,
+                            'credits_earned' => $academicRecord->credits_earned,
+                            'final_grade' => $academicRecord->final_grade,
+                            'grade_label' => $academicRecord->grade_label,
+                            'grade_points' => $academicRecord->grade_points,
+                            'status' => $academicRecord->status,
+                            'completed_at' => $academicRecord->completed_at,
+                            'sort_order' => $sortOrder++,
+                            'notes' => $academicRecord->notes,
+                        ];
+                    })
+                    ->all(),
+            );
+
+            $record->forceFill([
+                'transcript_number' => $transcriptNumber,
+                'status' => 'issued',
+                'purpose' => ($data['purpose'] ?? null) ?: null,
+                'issued_at' => $data['issued_at'],
+                'recipient_name' => ($data['recipient_name'] ?? null) ?: null,
+                'recipient_email' => ($data['recipient_email'] ?? null) ?: null,
+                'delivery_method' => $data['delivery_method'],
+                'registrar_notes' => ($data['registrar_notes'] ?? null) ?: null,
+            ]);
+
+            $record->save();
+
+            return true;
+        }, 3);
+    }
+
     protected static function generateTranscriptNumber(OfficialTranscript $record): string
     {
         $dateSegment = now()->format('Ymd');
@@ -269,6 +298,7 @@ class OfficialTranscriptsTable
                 random_int(1, 9999),
             );
         } while (OfficialTranscript::query()
+            ->withTrashed()
             ->where('institution_id', $record->institution_id)
             ->where('transcript_number', $candidate)
             ->exists());
