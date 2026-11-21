@@ -77,8 +77,10 @@
 
 ## Transcript Engine
 
+> Official academic transcript issuance is an atomic, controlled operation. A transcript may enter its issued state only through the authorized finalization workflow, which validates eligibility and preserves the academic data associated with the issuance. Ordinary administrative editing may not bypass this process.
+
 - `AcademicRecord` is source academic history, while `OfficialTranscriptLine` is the durable snapshot created at official issuance. Issuance is the durability boundary and runs transactionally with transcript metadata and line creation.
-- The Official Transcripts issue action is the registrar finalization path. Ordinary create/edit cannot set issued status. Issuance locks and rechecks the current transcript and its eligibility before writing snapshots. Competing requests preserve the first successful issuance.
+- The **Issue Transcript** action implements the registrar finalization workflow. Issuance locks and rechecks the current transcript and its eligibility before writing snapshots. Competing requests preserve the first successful issuance.
 - Use the **Issued without snapshot lines** filter in Official Transcripts to identify legacy issued records with no visible line snapshots for registrar review. The filter does not repair or reissue them.
 - Draft, requested, and under-review transcripts may be prepared from current AcademicRecords. Issued transcripts are finalized historical documents. Ordinary edits support administrative notes only, and the resource protects issued history from deletion and line regeneration. A later eligible issuance creates a new snapshot for that transcript record according to the existing lifecycle.
 - Term-bound records use their direct AcademicTerm. Completion-date records use `ReportingTermResolver` and durable `completed_at`; specialized terms are ignored, and no-match or ambiguous results block silent issuance.
