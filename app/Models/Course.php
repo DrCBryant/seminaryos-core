@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Core\Models\BaseModel;
+use App\Core\Scopes\InstitutionScope;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,11 @@ class Course extends BaseModel
     protected $attributes = [
         'scheduling_basis' => self::SCHEDULING_BASIS_TERM,
     ];
+
+    protected static function booted(): void
+    {
+        static::forceDeleting(fn (Course $course): bool => ! $course->academicRecords()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists());
+    }
 
     protected $fillable = [
         'uuid',

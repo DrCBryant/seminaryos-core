@@ -3,12 +3,16 @@
 namespace App\Models;
 
 use App\Core\Models\BaseModel;
+use App\Core\Scopes\InstitutionScope;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CourseEnrollment extends BaseModel
 {
@@ -26,6 +30,74 @@ class CourseEnrollment extends BaseModel
     public static function statusOptions(): array
     {
         return self::STATUS_OPTIONS;
+    }
+
+    public static function administrativeStatusOptions(): array
+    {
+        return Arr::except(self::STATUS_OPTIONS, ['completed']);
+    }
+
+    public function hasFinalizedOutcome(): bool
+    {
+        return $this->status === 'completed'
+            || $this->completed_at !== null
+            || $this->academicRecord()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists();
+    }
+
+    /** @param array<string, mixed> $data */
+    public static function validateAdministrativeData(array $data): void
+    {
+        if (($data['status'] ?? null) === 'completed' || filled($data['completed_at'] ?? null)) {
+            throw ValidationException::withMessages(['data.status' => 'Use guided completion to record an academic outcome.']);
+        }
+
+        $institutionId = $data['institution_id'] ?? null;
+        $currentInstitutionId = auth()->user()?->current_institution_id;
+
+        if ($currentInstitutionId !== null && (int) $institutionId !== (int) $currentInstitutionId) {
+            throw ValidationException::withMessages(['data.institution_id' => 'Select your current institution.']);
+        }
+
+        foreach (['student_id' => Student::class, 'course_id' => Course::class, 'academic_term_id' => AcademicTerm::class, 'course_offering_id' => CourseOffering::class] as $field => $model) {
+            if (filled($data[$field] ?? null) && ! $model::query()->where('institution_id', $institutionId)->whereKey($data[$field])->exists()) {
+                throw ValidationException::withMessages(["data.{$field}" => 'Select a record from the enrollment institution.']);
+            }
+        }
+    }
+
+    /** @param array<string, mixed> $data */
+    public function saveAdministrativeChanges(array $data): self
+    {
+        return DB::transaction(function () use ($data): self {
+            $current = self::query()->withTrashed()->lockForUpdate()->findOrFail($this->getKey());
+
+            if ($current->hasFinalizedOutcome()) {
+                $data = Arr::only($data, ['notes']);
+            } else {
+                $changes = $current->fill($data)->getDirty();
+                $associations = ['student_id', 'course_id', 'academic_term_id', 'course_offering_id'];
+                self::validateAdministrativeData($changes + ['institution_id' => $current->institution_id]
+                    + ($current->isDirty('institution_id') ? $current->only($associations) : []));
+            }
+
+            $current->update($data);
+            $this->setRawAttributes($current->getAttributes(), true);
+
+            return $this;
+        }, 3);
+    }
+
+    public function delete(): ?bool
+    {
+        return DB::transaction(function (): ?bool {
+            $current = self::query()->withTrashed()->lockForUpdate()->find($this->getKey());
+
+            if (! $current || $current->hasFinalizedOutcome()) {
+                return false;
+            }
+
+            return parent::delete();
+        }, 3);
     }
 
     protected $fillable = [

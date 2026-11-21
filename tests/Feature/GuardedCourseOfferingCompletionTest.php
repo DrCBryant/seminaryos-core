@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\CourseOfferings\Pages\ViewCourseOfferingCompletionReview;
 use App\Models\AcademicRecord;
 use App\Models\AcademicTerm;
 use App\Models\AttendanceRecord;
@@ -21,10 +22,12 @@ use App\Models\StudentSectionSubmission;
 use App\Models\User;
 use App\Support\Enrollments\EnrollmentCompletionService;
 use App\Support\SectionProgress\SectionProgressEvaluator;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class GuardedCourseOfferingCompletionTest extends TestCase
@@ -106,6 +109,29 @@ class GuardedCourseOfferingCompletionTest extends TestCase
             );
         }
 
+        $this->assertDatabaseCount('academic_records', 1);
+    }
+
+    public function test_guarded_bulk_action_still_completes_ready_enrollment(): void
+    {
+        $context = $this->createEnrollmentContext(CourseOffering::PROGRESS_BASIS_SUBMISSIONS);
+        $enrollment = $context['enrollment'];
+        $this->createSubmission($enrollment, StudentSectionSubmission::STATUS_ACCEPTED);
+        $this->actingAs($context['user']);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        $page = Livewire::test(ViewCourseOfferingCompletionReview::class, ['record' => $context['courseOffering']->getRouteKey()])
+            ->mountAction('completeReadyEnrollments');
+        $rows = $page->instance()->mountedActions[0]['data']['enrollments'];
+        $key = array_key_first($rows);
+
+        $page->set("mountedActions.0.data.enrollments.{$key}.final_grade", 'A')
+            ->set("mountedActions.0.data.enrollments.{$key}.completed_at", '2026-10-01')
+            ->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $this->assertSame('completed', $enrollment->fresh()->status);
+        $this->assertSame('A', $enrollment->academicRecord()->sole()->final_grade);
         $this->assertDatabaseCount('academic_records', 1);
     }
 

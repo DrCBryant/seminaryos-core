@@ -24,6 +24,8 @@ class CourseEnrollmentForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $finalized = fn (?CourseEnrollment $record): bool => $record?->hasFinalizedOutcome() ?? false;
+
         return $schema
             ->components([
                 Section::make('Course Enrollment Details')
@@ -100,7 +102,7 @@ class CourseEnrollmentForm
                                     })
                                     ->columnSpanFull(),
                                 Select::make('status')
-                                    ->options(CourseEnrollment::statusOptions())
+                                    ->options(fn (?CourseEnrollment $record): array => $finalized($record) ? CourseEnrollment::statusOptions() : CourseEnrollment::administrativeStatusOptions())
                                     ->required(),
                                 TextInput::make('final_grade')
                                     ->label('Final grade')
@@ -109,8 +111,8 @@ class CourseEnrollmentForm
                                     ->label('Enrolled date'),
                                 DateTimePicker::make('completed_at')
                                     ->label('Completed date')
-                                    ->afterOrEqual('enrolled_at'),
-                            ]),
+                                    ->disabled(),
+                            ])->disabled($finalized),
                         Textarea::make('notes')
                             ->rows(4),
                     ]),

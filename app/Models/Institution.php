@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Core\Scopes\InstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Institution extends Model
 {
     use HasUuid, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::forceDeleting(fn (Institution $institution): bool => ! AcademicRecord::query()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->where('institution_id', $institution->id)->exists()
+            && ! $institution->officialTranscripts()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists()
+            && ! OfficialTranscriptLine::query()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->where('institution_id', $institution->id)->exists());
+    }
 
     protected $fillable = [
         'uuid',

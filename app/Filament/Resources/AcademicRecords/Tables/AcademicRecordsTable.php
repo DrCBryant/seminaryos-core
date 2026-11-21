@@ -6,7 +6,6 @@ use App\Models\AcademicRecord;
 use App\Models\AcademicTerm;
 use App\Models\Student;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\IconColumn;
@@ -130,7 +129,6 @@ class AcademicRecordsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
             ]);

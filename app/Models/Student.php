@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Core\Models\BaseModel;
+use App\Core\Scopes\InstitutionScope;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Student extends BaseModel
 {
@@ -32,6 +34,26 @@ class Student extends BaseModel
     protected $casts = [
         'enrollment_date' => 'date',
     ];
+
+    public function delete(): ?bool
+    {
+        return DB::transaction(function (): ?bool {
+            $current = self::query()->withTrashed()->lockForUpdate()->find($this->getKey());
+
+            if (! $current || $current->hasAcademicHistory()) {
+                return false;
+            }
+
+            return parent::delete();
+        }, 3);
+    }
+
+    public function hasAcademicHistory(): bool
+    {
+        return $this->academicRecords()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists()
+            || $this->officialTranscriptLines()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists()
+            || $this->officialTranscripts()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists();
+    }
 
     protected function fullName(): Attribute
     {

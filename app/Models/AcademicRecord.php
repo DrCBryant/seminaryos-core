@@ -56,6 +56,11 @@ class AcademicRecord extends BaseModel
         'completed_at' => 'date',
     ];
 
+    protected static function booted(): void
+    {
+        static::deleting(fn (): bool => false);
+    }
+
     public static function statusOptions(): array
     {
         return self::STATUS_OPTIONS;

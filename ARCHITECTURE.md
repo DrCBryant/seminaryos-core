@@ -75,6 +75,9 @@
 - `AcademicRecord` and `OfficialTranscriptLine` are separate durable layers. Transcript issuance reads AcademicRecord and snapshots the resolved label and outcome into OfficialTranscriptLine; later AcademicRecord or upstream changes do not rewrite issued lines.
 - Ordinary registrar edit surfaces protect completion-derived fields after creation. Notes remain administrative metadata. Existing manual/import creation remains available for historical records; future correction of finalized outcomes should use an explicit amendment workflow rather than silent edits.
 
+- Only guarded enrollment completion may set the completed status and completion date through registrar enrollment workflows. Ordinary enrollment edits retain administrative notes after completion or once a durable outcome is linked. Existing records that indicate completion remain protected even when their outcome is missing.
+- Preserve academic history when administering students, courses, and institutions. Academic Records cannot be deleted through ordinary administration, and registrar deletion is blocked when it would hide protected student history or cascade through protected academic records or transcripts. Legacy soft-deleted records count toward retention. A student with an official transcript request is protected while that request can still be finalized. Manual historical AcademicRecord entry remains available, including explicit matching of a historical completed enrollment that lacks its outcome.
+
 ## Transcript Engine
 
 > Official academic transcript issuance is an atomic, controlled operation. A transcript may enter its issued state only through the authorized finalization workflow, which validates eligibility and preserves the academic data associated with the issuance. Ordinary administrative editing may not bypass this process.

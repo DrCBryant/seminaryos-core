@@ -16,16 +16,27 @@ class EnrollmentCompletionService
      */
     public function complete(CourseEnrollment $enrollment, array $data, array $progressEvaluation): void
     {
-        $payload = $this->validateAndNormalizePayload($enrollment, $data);
+        DB::transaction(function () use ($enrollment, $data, $progressEvaluation): void {
+            $current = CourseEnrollment::query()->lockForUpdate()->findOrFail($enrollment->getKey());
 
-        DB::transaction(function () use ($enrollment, $payload, $progressEvaluation): void {
-            if ($enrollment->academicRecord()->exists()) {
+            if ($current->hasFinalizedOutcome()) {
                 throw ValidationException::withMessages([
-                    'academic_record' => 'This course enrollment already has an academic record. No duplicate record was created.',
+                    'academic_record' => $current->academicRecord()->withTrashed()->exists()
+                        ? 'This course enrollment already has an academic record. No duplicate record was created.'
+                        : 'This course enrollment is already marked complete. Registrar review is required.',
                 ]);
             }
 
-            $enrollment->forceFill([
+            $context = ['institution_id', 'student_id', 'course_id', 'academic_term_id', 'course_offering_id', 'status'];
+            if ($current->only($context) !== $enrollment->only($context)) {
+                throw ValidationException::withMessages([
+                    'academic_record' => 'This enrollment changed during review. Reload it before completing it.',
+                ]);
+            }
+
+            $payload = $this->validateAndNormalizePayload($current, $data);
+
+            $current->forceFill([
                 'status' => 'completed',
                 'final_grade' => $payload['final_grade'],
                 'completed_at' => $payload['completed_at'],
@@ -38,13 +49,13 @@ class EnrollmentCompletionService
             ])->save();
 
             AcademicRecord::create([
-                'institution_id' => $enrollment->institution_id,
-                'student_id' => $enrollment->student_id,
-                'course_id' => $enrollment->course_id,
-                'academic_term_id' => $enrollment->academic_term_id,
-                'course_enrollment_id' => $enrollment->id,
-                'course_code' => $enrollment->course->code,
-                'course_title' => $enrollment->course->title,
+                'institution_id' => $current->institution_id,
+                'student_id' => $current->student_id,
+                'course_id' => $current->course_id,
+                'academic_term_id' => $current->academic_term_id,
+                'course_enrollment_id' => $current->id,
+                'course_code' => $current->course->code,
+                'course_title' => $current->course->title,
                 'credits_attempted' => $payload['credits_attempted'],
                 'credits_earned' => $payload['credits_earned'],
                 'final_grade' => $payload['final_grade'],
@@ -59,7 +70,8 @@ class EnrollmentCompletionService
                 'completed_at' => $payload['completed_at'],
                 'notes' => $payload['notes'],
             ]);
-        });
+            $enrollment->setRawAttributes($current->getAttributes(), true)->unsetRelation('academicRecord');
+        }, 3);
     }
 
     /**

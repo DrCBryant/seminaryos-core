@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CourseOfferings\RelationManagers;
 
 use App\Models\AcademicTerm;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\CourseOffering;
 use App\Models\Institution;
 use App\Models\Student;
@@ -65,6 +66,8 @@ class CourseEnrollmentsRelationManager extends RelationManager
                         $data['course_id'] = $ownerRecord->course_id;
                         $data['academic_term_id'] = $ownerRecord->academic_term_id;
 
+                        CourseEnrollment::validateAdministrativeData($data);
+
                         return $data;
                     })
                     ->form([
@@ -103,14 +106,7 @@ class CourseEnrollmentsRelationManager extends RelationManager
                             ->preload()
                             ->required(),
                         Select::make('status')
-                            ->options([
-                                'enrolled' => 'Enrolled',
-                                'dropped' => 'Dropped',
-                                'withdrawn' => 'Withdrawn',
-                                'completed' => 'Completed',
-                                'failed' => 'Failed',
-                                'incomplete' => 'Incomplete',
-                            ])
+                            ->options(CourseEnrollment::administrativeStatusOptions())
                             ->default('enrolled')
                             ->required(),
                         TextInput::make('final_grade')
@@ -120,7 +116,7 @@ class CourseEnrollmentsRelationManager extends RelationManager
                             ->label('Enrolled at'),
                         DateTimePicker::make('completed_at')
                             ->label('Completed at')
-                            ->afterOrEqual('enrolled_at'),
+                            ->disabled(),
                         Textarea::make('notes')
                             ->rows(4)
                             ->columnSpanFull(),
@@ -128,6 +124,7 @@ class CourseEnrollmentsRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make()
+                    ->using(fn (CourseEnrollment $record, array $data): CourseEnrollment => $record->saveAdministrativeChanges($data))
                     ->form([
                         Select::make('institution_id')
                             ->label('Institution')
@@ -135,52 +132,53 @@ class CourseEnrollmentsRelationManager extends RelationManager
                             ->getOptionLabelFromRecordUsing(fn (Institution $record): string => $record->name)
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->disabled(fn (CourseEnrollment $record): bool => $record->hasFinalizedOutcome()),
                         Select::make('student_id')
                             ->label('Student')
                             ->relationship('student', 'first_name', fn ($query) => $query->orderBy('first_name')->orderBy('last_name'))
                             ->getOptionLabelFromRecordUsing(fn (Student $record): string => $record->full_name)
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->disabled(fn (CourseEnrollment $record): bool => $record->hasFinalizedOutcome()),
                         Select::make('course_offering_id')
                             ->label('Course offering')
                             ->relationship('courseOffering', 'section_code', fn ($query) => $query->orderByDesc('academic_term_id')->orderBy('section_code'))
                             ->getOptionLabelFromRecordUsing(fn (CourseOffering $record): string => trim("{$record->course?->code} — {$record->academicTerm?->name} — {$record->section_code}"))
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->disabled(fn (CourseEnrollment $record): bool => $record->hasFinalizedOutcome()),
                         Select::make('course_id')
                             ->label('Course')
                             ->relationship('course', 'title', fn ($query) => $query->orderBy('title'))
                             ->getOptionLabelFromRecordUsing(fn (Course $record): string => "{$record->code} — {$record->title}")
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->disabled(fn (CourseEnrollment $record): bool => $record->hasFinalizedOutcome()),
                         Select::make('academic_term_id')
                             ->label('Academic term')
                             ->relationship('academicTerm', 'name', fn ($query) => $query->orderedForSelection())
                             ->getOptionLabelFromRecordUsing(fn (AcademicTerm $record): string => $record->display_label)
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->disabled(fn (CourseEnrollment $record): bool => $record->hasFinalizedOutcome()),
                         Select::make('status')
-                            ->options([
-                                'enrolled' => 'Enrolled',
-                                'dropped' => 'Dropped',
-                                'withdrawn' => 'Withdrawn',
-                                'completed' => 'Completed',
-                                'failed' => 'Failed',
-                                'incomplete' => 'Incomplete',
-                            ])
-                            ->required(),
+                            ->options(fn (CourseEnrollment $record): array => $record->hasFinalizedOutcome() ? CourseEnrollment::statusOptions() : CourseEnrollment::administrativeStatusOptions())
+                            ->required()
+                            ->disabled(fn (CourseEnrollment $record): bool => $record->hasFinalizedOutcome()),
                         TextInput::make('final_grade')
                             ->label('Final grade')
-                            ->maxLength(20),
+                            ->maxLength(20)
+                            ->disabled(fn (CourseEnrollment $record): bool => $record->hasFinalizedOutcome()),
                         DateTimePicker::make('enrolled_at')
-                            ->label('Enrolled at'),
+                            ->label('Enrolled at')
+                            ->disabled(fn (CourseEnrollment $record): bool => $record->hasFinalizedOutcome()),
                         DateTimePicker::make('completed_at')
                             ->label('Completed at')
-                            ->afterOrEqual('enrolled_at'),
+                            ->disabled(),
                         Textarea::make('notes')
                             ->rows(4)
                             ->columnSpanFull(),

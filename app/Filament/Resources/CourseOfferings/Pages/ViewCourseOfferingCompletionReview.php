@@ -12,20 +12,20 @@ use App\Support\Enrollments\EnrollmentCompletionService;
 use App\Support\SectionProgress\SectionProgressEvaluator;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -551,7 +551,7 @@ class ViewCourseOfferingCompletionReview extends Page
     protected function getReadyToCompleteEnrollments(): Collection
     {
         $this->courseOffering->loadMissing([
-            'courseEnrollments' => fn (Builder $query) => $query
+            'courseEnrollments' => fn (HasMany $query) => $query
                 ->with([
                     'student' => fn ($studentQuery) => $studentQuery->withTrashed(),
                     'course',

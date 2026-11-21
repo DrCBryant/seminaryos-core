@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CourseEnrollments\Tables;
 
+use App\Filament\Resources\CourseEnrollments\CourseEnrollmentResource;
 use App\Models\AcademicTerm;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
@@ -106,8 +107,9 @@ class CourseEnrollmentsTable
                     ->label('Complete Enrollment')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
+                    ->authorize(fn (CourseEnrollment $record): bool => CourseEnrollmentResource::canEdit($record))
                     ->visible(fn (CourseEnrollment $record): bool => in_array($record->status, self::COMPLETABLE_STATUSES, true)
-                        && ! $record->academicRecord()->exists())
+                        && ! $record->trashed() && ! $record->hasFinalizedOutcome())
                     ->requiresConfirmation()
                     ->modalHeading('Complete enrollment')
                     ->modalDescription('This will mark the enrollment as completed and create a durable academic record snapshot.')
@@ -206,6 +208,8 @@ class CourseEnrollmentsTable
                             ->rows(4),
                     ])
                     ->action(function (CourseEnrollment $record, array $data): void {
+                        abort_unless(CourseEnrollmentResource::canEdit($record), 403);
+
                         $progressEvaluation = self::progressEvaluationSnapshot($record);
 
                         if ($progressEvaluation['requires_override'] && ! ($data['confirm_override_completion'] ?? false)) {
