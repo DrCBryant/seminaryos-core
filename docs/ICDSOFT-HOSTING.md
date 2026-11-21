@@ -91,6 +91,8 @@ Standard ICDSoft-friendly deployment flow should include:
 
 Before deploying the course offering section-code hardening migration to production data, check for duplicate course offerings within the same institution, course, and academic term where `section_code` is blank or `NULL`. Those values normalize to `MAIN`, so duplicates can conflict with the course offering section uniqueness rule. If there is no existing course offering data, this preflight is not blocking.
 
+Before applying the academic-history retention migration, verify the target MySQL schema and deployment account, rehearse against a restored backup, and schedule a write pause. Follow the [academic-history retention deployment notes](ACADEMIC-HISTORY-RETENTION.md).
+
 ### Writable Directories
 
 Ensure these directories are writable by the hosting environment:
