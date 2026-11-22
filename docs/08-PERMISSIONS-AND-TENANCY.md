@@ -16,6 +16,18 @@ This document is descriptive architecture guidance only. It does not define impl
 
 ---
 
+## Implemented Portal Identity Boundary
+
+- Use the existing User account and its `institution_user` memberships. The single role on each membership gates institutional administration. Separate Student and Faculty links grant access by ownership and requested action. One membership may have both links, and one User may have different links in other institutions.
+- `current_institution_id` is the selected context. An active user and active membership in an active institution are required. The authenticated Eloquent scope returns no institution-owned records without that context. Unauthenticated jobs, imports, and console tasks retain the existing scope behavior.
+- The named gates are `view-own-student-identity`, `view-own-academic-record`, `view-own-faculty-identity`, `view-assigned-teaching-assignment`, and `view-assigned-teaching-section`. Future controllers must authorize the requested record after resolving the tenant. A section requires an assigned or active assignment to that exact section and course. Course-only assignments do not grant access to every section, and teaching access does not grant student record access.
+- The admin panel and registrar print route accept `admin`, `super_admin`, and `staff` memberships in the selected institution. Student and Faculty portal memberships do not independently grant registrar access. Formal conferral and account linking retain an administrator role requirement.
+- Administrators with record edit permission can open **Link Account** from a Student or Faculty edit page. Search shows active accounts with active memberships in that institution. The current link shows account and membership status, including inactive ones. A missing membership makes a user unavailable to link. Clearing the field removes the link, and selecting another valid member replaces it transactionally.
+- Inactive accounts or memberships cannot act through their links. Removing a membership, including account deletion that cascades to memberships, removes the links while preserving academic identities and history. Academic eligibility remains an independent domain decision.
+- Each portal experience can resolve its own link within the same session. Institution switching is reflected immediately when the stored context changes. A user-facing institution or experience switcher and invitation/provisioning rules remain future work.
+
+The remaining role and navigation sections describe the broader design where noted. The implemented boundaries above govern current portal foundation and registrar access.
+
 ## Core Tenancy Principles
 
 1. SeminaryOS uses a single shared database.
@@ -168,19 +180,19 @@ Institution switching is the act of choosing which tenant context the current us
 
 ### Rules
 
-1. A user may switch only to institutions they belong to, unless they are Super Admin.
+1. The selected institution must have an active membership for the current user, including Super Admin users.
 2. The selected institution becomes the current working tenant.
 3. Institution-scoped queries in the admin should resolve against that selected institution.
 4. Creating new institution-owned records should automatically associate them with the selected institution.
 5. Switching institutions should immediately change visible navigation, record lists, dashboards, and CRUD access to reflect the new tenant context.
 
-### Expected user flow
+### Planned user-facing switcher
 
 1. User signs in.
 2. System determines the institutions available to that user.
 3. If the user has one institution, that institution is selected automatically.
 4. If the user has multiple institutions, the system should restore the last selected institution or prompt the user to choose one.
-5. The chosen institution is stored as the active context for the session.
+5. The chosen institution is stored in `current_institution_id` and applies to subsequent requests.
 6. All institution-scoped admin operations use that active context until the user switches again.
 
 ### Why switching is necessary
@@ -243,7 +255,7 @@ Recommended behavior:
 
 - global platform screens may remain visible outside tenant scope
 - institution-owned resources should require an active tenant selection
-- Super Admin may switch into any institution to work as though operating inside that tenant
+- Super Admin must hold active membership in the selected tenant to administer its academic data
 
 This preserves clarity, reduces accidental cross-tenant mistakes, and keeps behavior consistent with the rest of the admin system.
 
@@ -317,11 +329,11 @@ The following security expectations must hold regardless of UI design.
 
 For the current phase of SeminaryOS, the simplest stable policy model is:
 
-- Super Admin manages platform and can enter any tenant
+- Platform-level roles remain a design concern. Current registrar access requires active selected membership for every role.
 - Institution Admin manages all institution-owned modules within their institution
-- Faculty manages academic content where permitted
+- Faculty portal actions require explicit academic identity and assigned-teaching authorization
 - Staff manages operational content where permitted
-- Student remains future-only and outside current admin workflows
+- Student portal actions require a linked student identity and record ownership. The student experience remains future work.
 
 This is sufficient for the present institution, website, program, course, and catalog scope while leaving room for finer-grained permissions later.
 
@@ -335,7 +347,7 @@ Later phases may extend this document with:
 - section-level curriculum permissions
 - publish vs edit separation
 - reviewer and approver workflows
-- student portal authorization
+- student portal screens and permitted self-service actions
 - faculty self-service profile and teaching assignments
 - audit visibility policies
 

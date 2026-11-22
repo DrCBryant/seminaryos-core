@@ -54,6 +54,8 @@ class OfficialTranscriptView
             return redirect()->guest(route('filament.admin.auth.login'));
         }
 
+        abort_unless(auth()->user()->canAccessRegistrar(), 403);
+
         $record = OfficialTranscript::query()->where('uuid', $transcript)
             ->where('institution_id', auth()->user()->current_institution_id)
             ->where('status', 'issued')->firstOrFail();
@@ -82,11 +84,8 @@ class OfficialTranscriptView
     {
         $actor = auth()->user();
 
-        return $actor !== null && $actor->status === 'active' && $actor->deleted_at === null
-            && (int) $actor->current_institution_id === (int) $transcript->institution_id
-            && ! $transcript->trashed()
-            && $actor->institutions()->whereKey($transcript->institution_id)->wherePivot('status', 'active')->exists()
-            && OfficialTranscriptResource::canView($transcript);
+        return $actor?->canAccessRegistrar((int) $transcript->institution_id) === true
+            && ! $transcript->trashed() && OfficialTranscriptResource::canView($transcript);
     }
 
     /**

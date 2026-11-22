@@ -97,6 +97,8 @@ The official transcript document snapshot migration adds nullable columns and da
 
 Official transcript PDF export uses the registrar’s browser and same-origin static CSS, JavaScript, and fonts. Deploy the tracked assets under `public/` with the application. The print route needs a working authenticated admin session and requires no PDF binary, browser installation, queue, or external CDN on ICDSoft. See [official transcript print and export](OFFICIAL-TRANSCRIPT-PRINT.md).
 
+Before rolling out portal identity authorization, verify that registrar accounts have active memberships and `current_institution_id` set to their intended active institution. The admin panel admits `admin`, `super_admin`, and `staff` roles in that context. The identity-link migration adds composite indexes and empty link tables. It assigns no accounts automatically. Back up established links before any rollback because dropping the link tables clears the associations.
+
 ### Writable Directories
 
 Ensure these directories are writable by the hosting environment:

@@ -10,8 +10,18 @@ class InstitutionScope implements Scope
 {
     public function apply(Builder $builder, Model $model): void
     {
-        if (auth()->check() && auth()->user()->currentInstitution) {
-            $builder->where($model->getTable().'.institution_id', auth()->user()->currentInstitution->id);
+        $actor = auth()->user();
+
+        if ($actor === null) {
+            return;
         }
+
+        if ($actor->activeInstitutionMembership() === null) {
+            $builder->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $builder->where($model->qualifyColumn('institution_id'), $actor->current_institution_id);
     }
 }

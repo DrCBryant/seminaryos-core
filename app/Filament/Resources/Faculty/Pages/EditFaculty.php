@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Faculty\Pages;
 
+use App\Filament\Actions\LinkAcademicAccount;
 use App\Filament\Resources\Faculty\FacultyResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
@@ -14,6 +15,7 @@ class EditFaculty extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            LinkAcademicAccount::make(),
             DeleteAction::make(),
             RestoreAction::make(),
         ];

@@ -88,6 +88,11 @@
 - Eligible students can receive explicit, institution-authorized awards for their assigned program. Award history and eligibility evidence are immutable, and global Student status remains independently managed.
 - Curriculum versions, institution-wide eligibility policy, delegated approval, award corrections, and transcript award selection policy remain future work.
 
+## Portal Identity and Authorization Foundations: Complete
+
+- Existing institutional accounts can link independently to Student and Faculty identities, including both in one institution. Administrators can manage links from the existing resources. Ownership and teaching-context gates depend on active tenant membership.
+- Student and Faculty portal screens, identity navigation, membership provisioning, and additional delegated permissions remain separate work.
+
 ## Outside the Completed Academic Terms Goal
 
 Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

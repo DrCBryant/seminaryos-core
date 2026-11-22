@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Students\Pages;
 
+use App\Filament\Actions\LinkAcademicAccount;
 use App\Filament\Resources\Students\StudentResource;
 use App\Filament\Resources\Students\Support\DegreeAuditPreview;
 use App\Filament\Resources\Students\Support\DegreeConferralAction;
@@ -19,6 +20,7 @@ class EditStudent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            LinkAcademicAccount::make(),
             DegreeAuditPreview::make(),
             DegreeConferralAction::make(),
             DegreeConferralAction::awardedCredentials(),

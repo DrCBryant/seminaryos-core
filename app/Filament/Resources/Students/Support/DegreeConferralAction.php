@@ -82,8 +82,6 @@ class DegreeConferralAction
             'registrar_remarks' => ['nullable', 'string', 'max:5000'],
         ])->validate();
 
-        auth()->user()?->loadMissing('currentInstitution');
-
         return DB::transaction(function () use ($student, $data): DegreeConferral {
             $current = Student::query()->lockForUpdate()->findOrFail($student->getKey());
             $actor = User::query()->whereNull('deleted_at')->lockForUpdate()->find(auth()->id());
@@ -124,23 +122,12 @@ class DegreeConferralAction
 
     private static function hasMembership(Student $student, ?User $actor = null, bool $forConferral = false): bool
     {
-        $actor ??= auth()->user();
+        $membership = ($actor ?? auth()->user())?->activeInstitutionMembership(
+            (int) $student->institution_id,
+            lock: $actor !== null,
+        );
 
-        if (! $actor || $actor->status !== 'active' || $actor->deleted_at !== null
-            || (int) $actor->current_institution_id !== (int) $student->institution_id || ! $student->institution()->exists()) {
-            return false;
-        }
-
-        $membership = DB::table('institution_user')->where('user_id', $actor->id)
-            ->where('institution_id', $student->institution_id)->where('status', 'active');
-
-        if ($forConferral) {
-            $membership->whereIn('role', ['admin', 'super_admin']);
-        }
-
-        return DB::transactionLevel() > 0
-            ? $membership->lockForUpdate()->first() !== null
-            : $membership->exists();
+        return $membership !== null && (! $forConferral || in_array($membership->role, User::INSTITUTION_ADMIN_ROLES, true));
     }
 
     private static function audit(Student $student): array

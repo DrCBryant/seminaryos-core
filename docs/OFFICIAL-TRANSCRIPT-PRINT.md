@@ -2,7 +2,7 @@
 
 In **Official Transcripts**, open **View Official Transcript**, then select **Print / Save PDF**. On the print page, select **Print / Save PDF** again and choose the browser’s **Save as PDF** destination. Keep the default scale and disable browser headers and footers. The page title suggests the download filename.
 
-The print page requires an active user and institution membership in the selected institution, plus permission to view the issued record. It sends private, no-store responses. The preview and print page share one Blade document and read frozen issuance data. Legacy notices remain visible on the export, and missing historical fields remain omitted. Per-course grade points and status follow captured settings. Aggregate GPA and automatic award selection stay governed by separate institutional decisions. Printing performs no application-data writes.
+The print page requires an active user with an active registrar-panel membership in the selected institution, plus permission to view the issued record. It sends private, no-store responses. The preview and print page share one Blade document and read frozen issuance data. Legacy notices remain visible on the export, and missing historical fields remain omitted. Per-course grade points and status follow captured settings. Aggregate GPA and automatic award selection stay governed by separate institutional decisions. Printing performs no application-data writes.
 
 ## Layout and browser support
 

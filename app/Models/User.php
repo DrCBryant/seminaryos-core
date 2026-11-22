@@ -4,12 +4,15 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -26,10 +29,49 @@ use Illuminate\Notifications\Notifiable;
     'locale',
 ])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    public const INSTITUTION_ADMIN_ROLES = ['admin', 'super_admin'];
+
+    protected $attributes = ['status' => 'active'];
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active' && $this->deleted_at === null;
+    }
+
+    public function activeInstitutionMembership(?int $institutionId = null, bool $lock = false): ?Pivot
+    {
+        $institutionId ??= $this->current_institution_id;
+
+        if (! $this->isActive() || $institutionId === null || (int) $this->current_institution_id !== (int) $institutionId) {
+            return null;
+        }
+
+        $institution = $this->institutions()->whereKey($institutionId)
+            ->where('institutions.status', 'active')->wherePivot('status', 'active')
+            ->when($lock, fn ($query) => $query->lockForUpdate())
+            ->first(['institutions.id']);
+
+        return $institution?->pivot;
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $panel->getId() === 'admin' && $this->canAccessRegistrar();
+    }
+
+    public function canAccessRegistrar(?int $institutionId = null): bool
+    {
+        return in_array(
+            $this->activeInstitutionMembership($institutionId)?->role,
+            [...self::INSTITUTION_ADMIN_ROLES, 'staff'],
+            true,
+        );
+    }
 
     public function currentInstitution(): BelongsTo
     {
@@ -39,7 +81,7 @@ class User extends Authenticatable
     public function institutions(): BelongsToMany
     {
         return $this->belongsToMany(Institution::class)
-            ->withPivot('role', 'status')
+            ->withPivot('id', 'role', 'status')
             ->withTimestamps();
     }
 

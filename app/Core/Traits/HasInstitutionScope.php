@@ -14,7 +14,7 @@ trait HasInstitutionScope
 
         static::creating(function (Model $model) {
             if (! $model->institution_id && auth()->check()) {
-                $model->institution_id = auth()->user()->currentInstitution?->id;
+                $model->institution_id = auth()->user()->activeInstitutionMembership()?->institution_id;
             }
         });
     }
