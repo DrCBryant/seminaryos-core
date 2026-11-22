@@ -50,7 +50,8 @@ class Student extends BaseModel
 
     public function hasAcademicHistory(): bool
     {
-        return $this->academicRecords()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists()
+        return $this->degreeConferrals()->withoutGlobalScope(InstitutionScope::class)->exists()
+            || $this->academicRecords()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists()
             || $this->officialTranscriptLines()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists()
             || $this->officialTranscripts()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->exists();
     }
@@ -80,6 +81,11 @@ class Student extends BaseModel
     public function courseEnrollments(): HasMany
     {
         return $this->hasMany(CourseEnrollment::class);
+    }
+
+    public function degreeConferrals(): HasMany
+    {
+        return $this->hasMany(DegreeConferral::class);
     }
 
     public function academicRecords(): HasMany

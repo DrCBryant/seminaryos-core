@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Students\Pages;
 
 use App\Filament\Resources\Students\StudentResource;
 use App\Filament\Resources\Students\Support\DegreeAuditPreview;
+use App\Filament\Resources\Students\Support\DegreeConferralAction;
 use App\Filament\Resources\Students\Support\GpaPreview;
 use App\Filament\Resources\Students\Support\TranscriptPreview;
 use Filament\Actions\DeleteAction;
@@ -19,6 +20,8 @@ class EditStudent extends EditRecord
     {
         return [
             DegreeAuditPreview::make(),
+            DegreeConferralAction::make(),
+            DegreeConferralAction::awardedCredentials(),
             GpaPreview::make(),
             TranscriptPreview::make(),
             DeleteAction::make(),

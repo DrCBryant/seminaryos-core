@@ -60,7 +60,7 @@ class DegreeAuditPreview
     /**
      * @return array<string, mixed>
      */
-    protected static function getViewData(Student $student): array
+    public static function getViewData(Student $student): array
     {
         $student->loadMissing([
             'institution',
@@ -73,9 +73,11 @@ class DegreeAuditPreview
 
         $records = $student->academicRecords
             ->sortBy([
-                fn (AcademicRecord $record) => $record->completed_at?->timestamp ?? PHP_INT_MAX,
-                fn (AcademicRecord $record) => $record->course_code,
-                fn (AcademicRecord $record) => $record->course_title,
+                fn (AcademicRecord $left, AcademicRecord $right): int => ($left->completed_at?->timestamp ?? PHP_INT_MAX)
+                    <=> ($right->completed_at?->timestamp ?? PHP_INT_MAX),
+                ['course_code', 'asc'],
+                ['course_title', 'asc'],
+                ['id', 'asc'],
             ])
             ->values();
 
@@ -90,8 +92,10 @@ class DegreeAuditPreview
         $groups = $student->program?->programRequirementGroups
             ?->where('is_active', true)
             ->sortBy([
-                fn (ProgramRequirementGroup $group) => $group->sort_order ?? PHP_INT_MAX,
-                fn (ProgramRequirementGroup $group) => $group->name,
+                fn (ProgramRequirementGroup $left, ProgramRequirementGroup $right): int => ($left->sort_order ?? PHP_INT_MAX)
+                    <=> ($right->sort_order ?? PHP_INT_MAX),
+                ['name', 'asc'],
+                ['id', 'asc'],
             ])
             ->values() ?? collect();
 
@@ -110,8 +114,10 @@ class DegreeAuditPreview
             $requirements = $group->programRequirements
                 ->where('is_active', true)
                 ->sortBy([
-                    fn (ProgramRequirement $requirement) => $requirement->sort_order ?? PHP_INT_MAX,
-                    fn (ProgramRequirement $requirement) => $requirement->name,
+                    fn (ProgramRequirement $left, ProgramRequirement $right): int => ($left->sort_order ?? PHP_INT_MAX)
+                        <=> ($right->sort_order ?? PHP_INT_MAX),
+                    ['name', 'asc'],
+                    ['id', 'asc'],
                 ])
                 ->values();
 
@@ -357,7 +363,7 @@ class DegreeAuditPreview
                 $evidence->status === 'waived'
                     ? 'Requirement satisfied by waived evidence.'
                     : 'Requirement satisfied by approved evidence.',
-            ),
+            ) + ['evidence' => $evidence],
             'pending', 'submitted' => self::baseRequirementResult(
                 $requirement,
                 'in_progress',
@@ -430,6 +436,7 @@ class DegreeAuditPreview
                     [
                         'earnedCredits' => self::creditsEarned($matchedRecord),
                         'matchedRecords' => collect([$matchedRecord]),
+                        'substitution' => $approvedSubstitution,
                     ],
                 );
             }

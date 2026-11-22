@@ -76,6 +76,11 @@
 - Direct term context, completion-date reporting resolution, deterministic ordering, GPA snapshots, and unresolved-term issuance safeguards are preserved.
 - Issued transcript history is protected from routine force deletion and mutable upstream changes.
 
+## Formal Degree Conferral: Registrar Workflow Implemented
+
+- Eligible students can receive explicit, institution-authorized awards for their assigned program. Award history and eligibility evidence are immutable, and global Student status remains independently managed.
+- Curriculum versions, institution-wide eligibility policy, delegated approval, award corrections, and transcript award snapshots remain future work.
+
 ## Outside the Completed Academic Terms Goal
 
 Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

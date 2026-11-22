@@ -67,7 +67,9 @@
             <h3 class="text-lg font-semibold text-gray-950 dark:text-white">Requirement Groups</h3>
 
             @foreach ($groupResults as $groupResult)
-                @php($group = $groupResult['group'])
+                @php
+                    $group = $groupResult['group'];
+                @endphp
                 <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-gray-900">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div>
@@ -125,7 +127,9 @@
             @else
                 <div class="space-y-4">
                     @foreach ($items as $result)
-                        @php($requirement = $result['requirement'])
+                        @php
+                            $requirement = $result['requirement'];
+                        @endphp
                         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-gray-900">
                             <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                 <div>
