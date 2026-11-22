@@ -26,6 +26,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class OfficialTranscriptsTable
 {
@@ -83,6 +84,9 @@ class OfficialTranscriptsTable
                 Filter::make('issued_without_lines')
                     ->label('Issued without snapshot lines')
                     ->query(fn (Builder $query): Builder => $query->where('status', 'issued')->whereDoesntHave('lines')),
+                Filter::make('issued_without_document_snapshot')
+                    ->label('Legacy issued transcripts')
+                    ->query(fn (Builder $query): Builder => $query->where('status', 'issued')->whereNull('document_snapshot')),
                 TrashedFilter::make(),
             ])
             ->recordActions([
@@ -150,7 +154,7 @@ class OfficialTranscriptsTable
             $record = OfficialTranscript::query()->lockForUpdate()->findOrFail($transcriptId);
             abort_unless(auth()->check() && OfficialTranscriptResource::canEdit($record), 403);
 
-            if (! in_array($record->status, self::ISSUABLE_STATUSES, true)) {
+            if ($record->document_snapshot !== null || ! in_array($record->status, self::ISSUABLE_STATUSES, true)) {
                 Notification::make()
                     ->title('Transcript cannot be issued')
                     ->body('The transcript is no longer eligible for issuance.')
@@ -161,11 +165,24 @@ class OfficialTranscriptsTable
             }
 
             $student = $record->student()->where('institution_id', $record->institution_id)->first();
+            $institution = $record->institution()->first();
+            $program = $student?->program()->withoutGlobalScope(InstitutionScope::class)->withTrashed()->first();
+
+            if (! $institution || ($program && $program->institution_id !== $record->institution_id)) {
+                Notification::make()
+                    ->title('Transcript cannot be issued')
+                    ->body('An issuing institution and institution-consistent program information are required.')
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+
             $academicRecords = $student?->academicRecords()
                 ->where('institution_id', $record->institution_id)
                 ->with([
-                    'academicTerm' => fn ($query) => $query->withoutGlobalScope(InstitutionScope::class),
-                    'course' => fn ($query) => $query->withoutGlobalScope(InstitutionScope::class),
+                    'academicTerm' => fn ($query) => $query->withoutGlobalScope(InstitutionScope::class)->withTrashed(),
+                    'course' => fn ($query) => $query->withoutGlobalScope(InstitutionScope::class)->withTrashed(),
                 ])
                 ->get();
 
@@ -234,11 +251,16 @@ class OfficialTranscriptsTable
 
             $sortOrder = 1;
 
-            $record->lines()->createMany(
+            $lines = $record->lines()->createMany(
                 $academicRecords
                     ->sortBy([
-                        fn (AcademicRecord $left, AcademicRecord $right): int => ($reportingTerms[$left->id]?->start_date?->timestamp ?? PHP_INT_MAX)
-                            <=> ($reportingTerms[$right->id]?->start_date?->timestamp ?? PHP_INT_MAX),
+                        fn (AcademicRecord $left, AcademicRecord $right): int => [
+                            $reportingTerms[$left->id]?->start_date?->timestamp ?? PHP_INT_MAX,
+                            $reportingTerms[$left->id]?->id ?? PHP_INT_MAX,
+                        ] <=> [
+                            $reportingTerms[$right->id]?->start_date?->timestamp ?? PHP_INT_MAX,
+                            $reportingTerms[$right->id]?->id ?? PHP_INT_MAX,
+                        ],
                         ['course_code', 'asc'],
                         ['course_title', 'asc'],
                         ['id', 'asc'],
@@ -253,6 +275,7 @@ class OfficialTranscriptsTable
                             'student_id' => $academicRecord->student_id,
                             'academic_term_id' => $term?->id,
                             'term_label' => $term?->display_label,
+                            'term_snapshot_id' => $term?->id,
                             'course_code' => $academicRecord->course_code,
                             'course_title' => $academicRecord->course_title,
                             'credits_attempted' => $academicRecord->credits_attempted,
@@ -260,6 +283,7 @@ class OfficialTranscriptsTable
                             'final_grade' => $academicRecord->final_grade,
                             'grade_label' => $academicRecord->grade_label,
                             'grade_points' => $academicRecord->grade_points,
+                            'affects_gpa' => $academicRecord->affects_gpa,
                             'status' => $academicRecord->status,
                             'completed_at' => $academicRecord->completed_at,
                             'sort_order' => $sortOrder++,
@@ -268,6 +292,10 @@ class OfficialTranscriptsTable
                     })
                     ->all(),
             );
+
+            if ($lines->contains(fn ($line): bool => ! $line->exists)) {
+                throw new RuntimeException('Could not save every transcript snapshot line.');
+            }
 
             $record->forceFill([
                 'transcript_number' => $transcriptNumber,
@@ -278,9 +306,12 @@ class OfficialTranscriptsTable
                 'recipient_email' => ($data['recipient_email'] ?? null) ?: null,
                 'delivery_method' => $data['delivery_method'],
                 'registrar_notes' => ($data['registrar_notes'] ?? null) ?: null,
+                'document_snapshot' => OfficialTranscriptView::captureSnapshot($institution, $student, $program, $data['delivery_method'], $lines),
             ]);
 
-            $record->save();
+            if (! $record->save()) {
+                throw new RuntimeException('Could not save the issued transcript document snapshot.');
+            }
 
             return true;
         }, 3);

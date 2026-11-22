@@ -42,9 +42,12 @@
     </div>
 
     <div id="official-transcript-render" class="space-y-6 bg-white text-gray-950 dark:bg-gray-950 dark:text-white">
+        @if ($legacy)
+            <p class="border border-gray-300 p-3 text-sm dark:border-white/20">Legacy issued transcript. Issuance-time identity, settings, and GPA were not captured. This view shows the surviving stored document fields and academic lines.</p>
+        @endif
         <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-gray-900">
             <div class="space-y-3 text-center">
-                <p class="text-sm font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{{ $transcript->institution?->name ?? 'Institution' }}</p>
+                <p class="text-sm font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{{ $document['institution_name'] ?? 'Institution' }}</p>
                 <h1 class="text-3xl font-bold text-gray-950 dark:text-white">{{ $transcriptSettings['transcript_title'] ?? 'Official Transcript' }}</h1>
                 @if (filled($transcriptSettings['certification_statement'] ?? null))
                     <p class="mx-auto max-w-4xl text-sm leading-6 text-gray-700 dark:text-gray-300">{{ $transcriptSettings['certification_statement'] }}</p>
@@ -56,23 +59,23 @@
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div>
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Institution</p>
-                <p class="text-base font-semibold text-gray-950 dark:text-white">{{ $transcript->institution?->name ?? '—' }}</p>
+                <p class="text-base font-semibold text-gray-950 dark:text-white">{{ $document['institution_name'] ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Student</p>
-                <p class="text-base font-semibold text-gray-950 dark:text-white">{{ $student->full_name }}</p>
+                <p class="text-base font-semibold text-gray-950 dark:text-white">{{ $document['student_name'] ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Student Number</p>
-                <p class="text-base text-gray-950 dark:text-white">{{ $student->student_number }}</p>
+                <p class="text-base text-gray-950 dark:text-white">{{ $document['student_number'] ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Program</p>
-                <p class="text-base text-gray-950 dark:text-white">{{ $student->program?->title ?? '—' }}</p>
+                <p class="text-base text-gray-950 dark:text-white">{{ $document['program']['title'] ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Enrollment Date</p>
-                <p class="text-base text-gray-950 dark:text-white">{{ $formatDate($student->enrollment_date) }}</p>
+                <p class="text-base text-gray-950 dark:text-white">{{ isset($document['enrollment_date']) ? $formatDate(\Illuminate\Support\Carbon::parse($document['enrollment_date'])) : '—' }}</p>
             </div>
             <div>
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Transcript Number</p>
@@ -91,7 +94,7 @@
             @if ($showDeliveryMethod)
                 <div>
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Delivery Method</p>
-                    <p class="text-base text-gray-950 dark:text-white">{{ $transcript->delivery_method ? \App\Filament\Resources\OfficialTranscripts\Schemas\OfficialTranscriptForm::DELIVERY_METHOD_OPTIONS[$transcript->delivery_method] ?? $transcript->delivery_method : '—' }}</p>
+                    <p class="text-base text-gray-950 dark:text-white">{{ $document['delivery_label'] ?? '—' }}</p>
                 </div>
             @endif
             @if ($showRecipientInfo)
@@ -214,6 +217,15 @@
             </div>
         @endforeach
 
+        @if (! empty($document['awards']))
+            <section class="space-y-2">
+                <h3 class="text-lg font-semibold text-gray-950 dark:text-white">Awarded Credentials</h3>
+                @foreach ($document['awards'] as $award)
+                    <p>{{ $award['program_title'] }} ({{ $award['program_code'] }}) · {{ $award['credential_type'] }} · {{ $award['conferred_on'] }}</p>
+                @endforeach
+            </section>
+        @endif
+
         <div class="grid gap-4 lg:grid-cols-2">
             @if (filled($transcriptSettings['grading_scale_note'] ?? null))
                 <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
@@ -230,7 +242,7 @@
             @endif
         </div>
 
-        @if (filled($transcriptSettings['transcript_disclaimer'] ?? null) || filled($transcriptSettings['footer_statement'] ?? null) || filled($transcriptSettings['registrar_name'] ?? null) || filled($transcriptSettings['registrar_title'] ?? null))
+        @if ($transcriptSettings['show_registrar_footer'] ?? false)
             <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-gray-900">
                 @if (filled($transcriptSettings['transcript_disclaimer'] ?? null))
                     <div>

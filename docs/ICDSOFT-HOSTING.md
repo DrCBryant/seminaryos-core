@@ -93,6 +93,8 @@ Before deploying the course offering section-code hardening migration to product
 
 Before applying the academic-history retention migration, verify the target MySQL schema and deployment account, rehearse against a restored backup, and schedule a write pause. Follow the [academic-history retention deployment notes](ACADEMIC-HISTORY-RETENTION.md).
 
+The official transcript document snapshot migration adds nullable columns and database triggers. Existing issuances receive no backfill. Rehearse on a restored backup with the hosting deployment account, verify the existing retention triggers and new trigger privileges, and schedule a write pause for MySQL DDL. The rollback is available before the first document snapshot is written. After issuance, preserve the snapshots with a forward migration.
+
 ### Writable Directories
 
 Ensure these directories are writable by the hosting environment:

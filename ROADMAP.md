@@ -69,17 +69,23 @@
 - Registrar edit surfaces protect durable outcome fields while retaining notes management, and unsafe hard-delete actions are not exposed.
 - Official transcript lines remain separate issuance snapshots and are not rewritten by later academic-record changes.
 
-## Transcript Engine: Complete
+## Official Transcript Issuance Controls: Complete
 
-- Existing OfficialTranscript and OfficialTranscriptLine layers remain intact, with issuance as the transactional snapshot boundary.
-- Issued rendering uses durable transcript lines; preview remains current-state and advisory.
-- Direct term context, completion-date reporting resolution, deterministic ordering, GPA snapshots, and unresolved-term issuance safeguards are preserved.
-- Issued transcript history is protected from routine force deletion and mutable upstream changes.
+- The registrar issue action is the only ordinary path to finalize a transcript. It locks and rechecks eligibility and commits issued metadata and snapshots together.
+
+## Official Transcript Document Snapshots: Complete for New Issuances
+
+- The issued view uses frozen identity, program, settings, term groups, and coursework. GPA inputs and summaries are captured. Legacy issuances remain identifiable without reconstructing their missing historical values.
+- Publishing awards and aggregate GPA requires institutional policy. Their data contracts are documented.
+
+## Official Transcript PDF Appearance and Export: Pending
+
+- Registrar print layout, font licensing, pagination, and verification of the existing client-side export remain separate work.
 
 ## Formal Degree Conferral: Registrar Workflow Implemented
 
 - Eligible students can receive explicit, institution-authorized awards for their assigned program. Award history and eligibility evidence are immutable, and global Student status remains independently managed.
-- Curriculum versions, institution-wide eligibility policy, delegated approval, award corrections, and transcript award snapshots remain future work.
+- Curriculum versions, institution-wide eligibility policy, delegated approval, award corrections, and transcript award selection policy remain future work.
 
 ## Outside the Completed Academic Terms Goal
 

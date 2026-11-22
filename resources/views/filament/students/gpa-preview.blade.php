@@ -177,7 +177,9 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                             @foreach ($incompleteGpaRecords as $entry)
-                                @php($record = $entry['record'])
+                                @php
+                                    $record = $entry['record'];
+                                @endphp
                                 <tr>
                                     <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $record->course_code }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $record->course_title }}</td>
@@ -219,7 +221,9 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                             @foreach ($excludedRecords as $entry)
-                                @php($record = $entry['record'])
+                                @php
+                                    $record = $entry['record'];
+                                @endphp
                                 <tr>
                                     <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $record->course_code }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $record->course_title }}</td>

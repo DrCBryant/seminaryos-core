@@ -41,6 +41,7 @@ class OfficialTranscript extends BaseModel
     protected $casts = [
         'requested_at' => 'datetime',
         'issued_at' => 'datetime',
+        'document_snapshot' => 'array',
     ];
 
     public static function statusOptions(): array

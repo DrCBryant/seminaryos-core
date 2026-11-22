@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Students\Support;
 
 use App\Models\AcademicRecord;
+use App\Models\OfficialTranscriptLine;
 use App\Models\Student;
 use App\Support\AcademicTerms\ReportingTermResolver;
 use Filament\Actions\Action;
@@ -93,15 +94,14 @@ class GpaPreview
                 $firstRecord = $group->first();
                 $resolution = $reportingTerms[$firstRecord->id];
                 $term = $resolution['term'];
-                $termCredits = (float) $group->sum(fn (AcademicRecord $record) => (float) ($record->credits_attempted ?? 0));
-                $termQualityPoints = (float) $group->sum(fn (AcademicRecord $record) => self::calculateQualityPoints($record));
+                $summary = self::summarize($group);
 
                 return [
                     'label' => $term?->display_label ?? ($resolution['message'] ?? 'Reporting term unresolved'),
                     'records' => $group,
-                    'gpaCredits' => $termCredits,
-                    'qualityPoints' => $termQualityPoints,
-                    'gpa' => $termCredits > 0 ? $termQualityPoints / $termCredits : null,
+                    'gpaCredits' => $summary['credits'],
+                    'qualityPoints' => $summary['quality_points'],
+                    'gpa' => $summary['gpa'],
                 ];
             })
             ->values();
@@ -110,8 +110,7 @@ class GpaPreview
             ->filter(fn (AcademicRecord $record): bool => $reportingTerms[$record->id]['term'] === null && ! $record->course?->isCompletionDateGrouped())
             ->values();
 
-        $totalGpaCredits = (float) $includedRecords->sum(fn (AcademicRecord $record) => (float) ($record->credits_attempted ?? 0));
-        $totalQualityPoints = (float) $includedRecords->sum(fn (AcademicRecord $record) => self::calculateQualityPoints($record));
+        $summary = self::summarize($includedRecords);
 
         return [
             'student' => $student,
@@ -119,14 +118,32 @@ class GpaPreview
             'otherIncludedRecords' => $otherIncludedRecords,
             'incompleteGpaRecords' => $incompleteGpaRecords,
             'excludedRecords' => $excludedRecords,
-            'totalGpaCredits' => $totalGpaCredits,
-            'totalQualityPoints' => $totalQualityPoints,
-            'overallGpa' => $totalGpaCredits > 0 ? $totalQualityPoints / $totalGpaCredits : null,
+            'totalGpaCredits' => $summary['credits'],
+            'totalQualityPoints' => $summary['quality_points'],
+            'overallGpa' => $summary['gpa'],
             'hasIncompleteGpaRecords' => $incompleteGpaRecords->isNotEmpty(),
         ];
     }
 
-    protected static function isCompleteGpaBearingRecord(AcademicRecord $record): bool
+    /**
+     * @param  Collection<array-key, AcademicRecord|OfficialTranscriptLine>  $records
+     * @return array{credits: float, quality_points: float, gpa: ?float, incomplete_records: int}
+     */
+    public static function summarize(Collection $records): array
+    {
+        $included = $records->filter(self::isCompleteGpaBearingRecord(...));
+        $credits = (float) $included->sum(fn (AcademicRecord|OfficialTranscriptLine $record): float => (float) $record->credits_attempted);
+        $qualityPoints = (float) $included->sum(self::calculateQualityPoints(...));
+
+        return [
+            'credits' => $credits,
+            'quality_points' => $qualityPoints,
+            'gpa' => $credits > 0 ? $qualityPoints / $credits : null,
+            'incomplete_records' => $records->whereStrict('affects_gpa', true)->count() - $included->count(),
+        ];
+    }
+
+    protected static function isCompleteGpaBearingRecord(AcademicRecord|OfficialTranscriptLine $record): bool
     {
         if ($record->affects_gpa !== true) {
             return false;
@@ -156,7 +173,7 @@ class GpaPreview
         return implode('; ', $reasons);
     }
 
-    protected static function calculateQualityPoints(AcademicRecord $record): float
+    protected static function calculateQualityPoints(AcademicRecord|OfficialTranscriptLine $record): float
     {
         $creditsAttempted = (float) ($record->credits_attempted ?? 0);
         $gradePoints = (float) ($record->grade_points ?? 0);
