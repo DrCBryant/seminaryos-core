@@ -1,268 +1,169 @@
 @php
-    $formatCredits = static fn ($value) => $value === null ? '—' : number_format((float) $value, 2);
-    $formatDate = static fn ($value) => $value?->format('M j, Y') ?? '—';
-    $showRecipientInfo = (bool) ($transcriptSettings['show_recipient_info'] ?? true);
-    $showDeliveryMethod = (bool) ($transcriptSettings['show_delivery_method'] ?? true);
-    $showPurpose = (bool) ($transcriptSettings['show_purpose'] ?? true);
-    $showGradePoints = (bool) ($transcriptSettings['show_grade_points'] ?? false);
-    $showStatus = (bool) ($transcriptSettings['show_status'] ?? true);
+    $details = [
+        'Student' => $document['student_name'] ?? null,
+        'Student Number' => $document['student_number'] ?? null,
+        'Program' => $document['program']['title'] ?? null,
+        'Enrollment Date' => isset($document['enrollment_date'])
+            ? \Illuminate\Support\Carbon::parse($document['enrollment_date'])->format('M j, Y')
+            : null,
+        'Transcript Number' => $transcript->transcript_number,
+        'Issued Date' => $transcript->issued_at?->format('M j, Y'),
+    ];
+    $showGradePoints = $transcriptSettings['show_grade_points'] ?? false;
+    $showStatus = $transcriptSettings['show_status'] ?? false;
+    $groups = $termGroups->concat($otherGroups);
+    $fixedColumns = 6 + (int) $showGradePoints + (int) $showStatus;
+    $formatCredits = fn ($credits) => $credits === null ? '—' : number_format((float) $credits, 2);
+
+    if (filled($document['program']['code'] ?? null)) {
+        $details['Program'] .= ' ('.$document['program']['code'].')';
+    }
+
+    if ($transcriptSettings['show_purpose'] ?? false) {
+        $details['Purpose'] = $transcript->purpose;
+    }
+
+    if ($transcriptSettings['show_delivery_method'] ?? false) {
+        $details['Delivery Method'] = $document['delivery_label'] ?? null;
+    }
+
+    if ($transcriptSettings['show_recipient_info'] ?? false) {
+        $details['Recipient'] = $transcript->recipient_name;
+        $details['Recipient Email'] = $transcript->recipient_email;
+    }
 @endphp
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-yz3leL7XY8FkgxPjW6c8x2kgd2S4mM6zJpG1L0xJw8O1N8MPmMXxMvmP0xSg6u40qCMgfHdCqkfNNPJBbL4U1g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-<div class="space-y-6" x-data="{
-    exportPdf() {
-        const element = document.getElementById('official-transcript-render');
-
-        if (!element || typeof html2pdf === 'undefined') {
-            return;
-        }
-
-        html2pdf()
-            .set({
-                margin: [0.5, 0.5, 0.5, 0.5],
-                filename: @js($pdfFilename),
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-                pagebreak: { mode: ['css', 'legacy'] },
-            })
-            .from(element)
-            .save();
-    }
-}">
-    <div class="flex justify-end print:hidden">
-        <button
-            type="button"
-            x-on:click="exportPdf()"
-            class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
-        >
-            Download PDF
-        </button>
+@if (! ($printPage ?? false))
+    <link rel="stylesheet" href="{{ asset('css/transcript-document.css') }}">
+    <div class="transcript-controls">
+        <a href="{{ route('official-transcripts.print', $transcript->uuid) }}" target="_blank" rel="noopener">Print / Save PDF</a>
     </div>
+@endif
 
-    <div id="official-transcript-render" class="space-y-6 bg-white text-gray-950 dark:bg-gray-950 dark:text-white">
-        @if ($legacy)
-            <p class="border border-gray-300 p-3 text-sm dark:border-white/20">Legacy issued transcript. Issuance-time identity, settings, and GPA were not captured. This view shows the surviving stored document fields and academic lines.</p>
+<article class="transcript-document">
+    @if ($legacy)
+        <p class="transcript-legacy">Legacy issued transcript. Issuance-time identity, settings, and GPA were not captured. This view shows the surviving stored document fields and academic lines.</p>
+    @endif
+
+    <header class="transcript-heading">
+        @if (filled($document['institution_name'] ?? null))
+            <p class="transcript-institution">{{ $document['institution_name'] }}</p>
         @endif
-        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-gray-900">
-            <div class="space-y-3 text-center">
-                <p class="text-sm font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{{ $document['institution_name'] ?? 'Institution' }}</p>
-                <h1 class="text-3xl font-bold text-gray-950 dark:text-white">{{ $transcriptSettings['transcript_title'] ?? 'Official Transcript' }}</h1>
-                @if (filled($transcriptSettings['certification_statement'] ?? null))
-                    <p class="mx-auto max-w-4xl text-sm leading-6 text-gray-700 dark:text-gray-300">{{ $transcriptSettings['certification_statement'] }}</p>
-                @endif
-            </div>
-        </div>
+        <h1>{{ $transcriptSettings['transcript_title'] ?? 'Official Transcript' }}</h1>
+    </header>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-gray-900">
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div>
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Institution</p>
-                <p class="text-base font-semibold text-gray-950 dark:text-white">{{ $document['institution_name'] ?? '—' }}</p>
-            </div>
-            <div>
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Student</p>
-                <p class="text-base font-semibold text-gray-950 dark:text-white">{{ $document['student_name'] ?? '—' }}</p>
-            </div>
-            <div>
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Student Number</p>
-                <p class="text-base text-gray-950 dark:text-white">{{ $document['student_number'] ?? '—' }}</p>
-            </div>
-            <div>
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Program</p>
-                <p class="text-base text-gray-950 dark:text-white">{{ $document['program']['title'] ?? '—' }}</p>
-            </div>
-            <div>
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Enrollment Date</p>
-                <p class="text-base text-gray-950 dark:text-white">{{ isset($document['enrollment_date']) ? $formatDate(\Illuminate\Support\Carbon::parse($document['enrollment_date'])) : '—' }}</p>
-            </div>
-            <div>
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Transcript Number</p>
-                <p class="text-base text-gray-950 dark:text-white">{{ $transcript->transcript_number }}</p>
-            </div>
-            <div>
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Issued Date</p>
-                <p class="text-base text-gray-950 dark:text-white">{{ $formatDate($transcript->issued_at) }}</p>
-            </div>
-            @if ($showPurpose)
+    <dl class="transcript-details">
+        @foreach ($details as $label => $value)
+            @if (filled($value))
                 <div>
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Purpose</p>
-                    <p class="text-base text-gray-950 dark:text-white">{{ $transcript->purpose ?? '—' }}</p>
+                    <dt>{{ $label }}</dt>
+                    <dd>{{ $value }}</dd>
                 </div>
             @endif
-            @if ($showDeliveryMethod)
-                <div>
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Delivery Method</p>
-                    <p class="text-base text-gray-950 dark:text-white">{{ $document['delivery_label'] ?? '—' }}</p>
-                </div>
-            @endif
-            @if ($showRecipientInfo)
-                <div>
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Recipient Name</p>
-                    <p class="text-base text-gray-950 dark:text-white">{{ $transcript->recipient_name ?? '—' }}</p>
-                </div>
-                <div>
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Recipient Email</p>
-                    <p class="text-base text-gray-950 dark:text-white">{{ $transcript->recipient_email ?? '—' }}</p>
-                </div>
-            @endif
-        </div>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-2">
-            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Credits Attempted</p>
-            <p class="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">{{ number_format($totalCreditsAttempted, 2) }}</p>
-            </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Credits Earned</p>
-            <p class="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">{{ number_format($totalCreditsEarned, 2) }}</p>
-            </div>
-        </div>
-
-        @forelse ($termGroups as $group)
-            <div class="space-y-3">
-                <h3 class="text-lg font-semibold text-gray-950 dark:text-white">{{ $group['label'] }}</h3>
-                <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10">
-                            <thead class="bg-gray-50 dark:bg-white/5">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Course Code</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Course Title</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Credits Attempted</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Credits Earned</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Final Grade</th>
-                                    @if ($showGradePoints)
-                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Grade Points</th>
-                                    @endif
-                                    @if ($showStatus)
-                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
-                                    @endif
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Completed</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                                @foreach ($group['lines'] as $line)
-                                    <tr>
-                                        <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $line->course_code }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $line->course_title }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatCredits($line->credits_attempted) }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatCredits($line->credits_earned) }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $line->final_grade ?? '—' }}</td>
-                                        @if ($showGradePoints)
-                                            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatCredits($line->grade_points) }}</td>
-                                        @endif
-                                        @if ($showStatus)
-                                            <td class="px-4 py-3 text-sm text-gray-700 capitalize dark:text-gray-300">{{ str_replace('_', ' ', $line->status) }}</td>
-                                        @endif
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatDate($line->completed_at) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        @empty
-            <div class="rounded-xl border border-dashed border-gray-300 p-6 text-sm text-gray-500 dark:border-white/10 dark:text-gray-400">
-                No transcript lines with academic term labels are available.
-            </div>
-        @endforelse
-
-        @foreach ($otherGroups as $group)
-            <div class="space-y-3">
-                <h3 class="text-lg font-semibold text-gray-950 dark:text-white">{{ $group['label'] }}</h3>
-                <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10">
-                            <thead class="bg-gray-50 dark:bg-white/5">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Course Code</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Course Title</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Credits Attempted</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Credits Earned</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Final Grade</th>
-                                    @if ($showGradePoints)
-                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Grade Points</th>
-                                    @endif
-                                    @if ($showStatus)
-                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
-                                    @endif
-                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Completed</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                                @foreach ($group['lines'] as $line)
-                                    <tr>
-                                        <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $line->course_code }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-950 dark:text-white">{{ $line->course_title }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatCredits($line->credits_attempted) }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatCredits($line->credits_earned) }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $line->final_grade ?? '—' }}</td>
-                                        @if ($showGradePoints)
-                                            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatCredits($line->grade_points) }}</td>
-                                        @endif
-                                        @if ($showStatus)
-                                            <td class="px-4 py-3 text-sm text-gray-700 capitalize dark:text-gray-300">{{ str_replace('_', ' ', $line->status) }}</td>
-                                        @endif
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $formatDate($line->completed_at) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         @endforeach
+    </dl>
 
-        @if (! empty($document['awards']))
-            <section class="space-y-2">
-                <h3 class="text-lg font-semibold text-gray-950 dark:text-white">Awarded Credentials</h3>
-                @foreach ($document['awards'] as $award)
-                    <p>{{ $award['program_title'] }} ({{ $award['program_code'] }}) · {{ $award['credential_type'] }} · {{ $award['conferred_on'] }}</p>
-                @endforeach
-            </section>
-        @endif
-
-        <div class="grid gap-4 lg:grid-cols-2">
-            @if (filled($transcriptSettings['grading_scale_note'] ?? null))
-                <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
-                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Grading Scale Note</h3>
-                    <p class="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">{{ $transcriptSettings['grading_scale_note'] }}</p>
-                </div>
-            @endif
-
-            @if (filled($transcriptSettings['accreditation_note'] ?? null))
-                <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
-                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Accreditation Note</h3>
-                    <p class="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">{{ $transcriptSettings['accreditation_note'] }}</p>
-                </div>
-            @endif
-        </div>
-
-        @if ($transcriptSettings['show_registrar_footer'] ?? false)
-            <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-gray-900">
-                @if (filled($transcriptSettings['transcript_disclaimer'] ?? null))
-                    <div>
-                        <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Disclaimer</h3>
-                        <p class="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">{{ $transcriptSettings['transcript_disclaimer'] }}</p>
-                    </div>
+    @forelse ($groups as $group)
+        <table class="transcript-coursework">
+            <colgroup>
+                <col class="transcript-col-code">
+                <col>
+                <col class="transcript-col-attempted">
+                <col class="transcript-col-credits">
+                <col class="transcript-col-grade">
+                @if ($showGradePoints)
+                    <col class="transcript-col-credits">
                 @endif
-
-                <div class="mt-6 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-                    <div>
-                        @if (filled($transcriptSettings['footer_statement'] ?? null))
-                            <p class="text-sm leading-6 text-gray-700 dark:text-gray-300">{{ $transcriptSettings['footer_statement'] }}</p>
+                @if ($showStatus)
+                    <col class="transcript-col-status">
+                @endif
+                <col class="transcript-col-date">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th colspan="{{ $fixedColumns }}" class="transcript-term" scope="colgroup">{{ $group['label'] }}</th>
+                </tr>
+                <tr>
+                    <th scope="col">Code</th>
+                    <th scope="col">Course</th>
+                    <th scope="col" class="transcript-number">Attempted</th>
+                    <th scope="col" class="transcript-number">Earned</th>
+                    <th scope="col" class="transcript-number">Grade</th>
+                    @if ($showGradePoints)
+                        <th scope="col" class="transcript-number">Points</th>
+                    @endif
+                    @if ($showStatus)
+                        <th scope="col">Status</th>
+                    @endif
+                    <th scope="col">Completed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($group['lines'] as $line)
+                    <tr>
+                        <td>{{ $line->course_code }}</td>
+                        <td>{{ $line->course_title }}</td>
+                        <td class="transcript-number">{{ $formatCredits($line->credits_attempted) }}</td>
+                        <td class="transcript-number">{{ $formatCredits($line->credits_earned) }}</td>
+                        <td class="transcript-number">{{ $line->final_grade ?? '—' }}</td>
+                        @if ($showGradePoints)
+                            <td class="transcript-number">{{ $formatCredits($line->grade_points) }}</td>
                         @endif
-                    </div>
-                    <div class="min-w-56 border-t border-gray-300 pt-3 text-sm dark:border-white/20">
-                        <p class="font-semibold text-gray-950 dark:text-white">{{ $transcriptSettings['registrar_name'] ?? 'Registrar' }}</p>
-                        <p class="text-gray-600 dark:text-gray-400">{{ $transcriptSettings['registrar_title'] ?? 'Office of the Registrar' }}</p>
-                    </div>
-                </div>
-            </div>
+                        @if ($showStatus)
+                            <td>{{ ucfirst(str_replace('_', ' ', $line->status)) }}</td>
+                        @endif
+                        <td>{{ $line->completed_at?->format('m/d/Y') ?? '—' }}</td>
+                    </tr>
+                @endforeach
+                @if ($group['lines']->whereNotNull('credits_attempted')->isNotEmpty() || $group['lines']->whereNotNull('credits_earned')->isNotEmpty())
+                    <tr class="transcript-term-total">
+                        <th colspan="2" scope="row">Credit subtotal</th>
+                        <td class="transcript-number">{{ $formatCredits($group['lines']->whereNotNull('credits_attempted')->isEmpty() ? null : $group['lines']->sum('credits_attempted')) }}</td>
+                        <td class="transcript-number">{{ $formatCredits($group['lines']->whereNotNull('credits_earned')->isEmpty() ? null : $group['lines']->sum('credits_earned')) }}</td>
+                        <td colspan="{{ $fixedColumns - 4 }}"></td>
+                    </tr>
+                @endif
+            </tbody>
+        </table>
+    @empty
+        <p>No academic snapshot lines are available.</p>
+    @endforelse
+
+    @if ($groups->isNotEmpty())
+        <p class="transcript-total"><strong>Total credits</strong> · {{ $formatCredits($totalCreditsAttempted) }} attempted · {{ $formatCredits($totalCreditsEarned) }} earned</p>
+    @endif
+
+    @if (! empty($document['awards']))
+        <section class="transcript-statement">
+            <h2>Awarded Credentials</h2>
+            @foreach ($document['awards'] as $award)
+                <p>{{ $award['program_title'] }} ({{ $award['program_code'] }}) · {{ $award['credential_type'] }} · {{ $award['conferred_on'] }}</p>
+            @endforeach
+        </section>
+    @endif
+
+    <footer class="transcript-footer">
+        @foreach ([
+            'grading_scale_note' => 'Grading Scale',
+            'accreditation_note' => 'Accreditation',
+            'certification_statement' => 'Registrar Certification',
+            'transcript_disclaimer' => null,
+            'footer_statement' => null,
+        ] as $key => $label)
+            @if (filled($transcriptSettings[$key] ?? null))
+                <section class="transcript-statement">
+                    @if ($label)
+                        <h2>{{ $label }}</h2>
+                    @endif
+                    <p>{{ $transcriptSettings[$key] }}</p>
+                </section>
+            @endif
+        @endforeach
+        @if ($transcriptSettings['show_registrar_footer'] ?? false)
+            <p class="transcript-registrar">
+                <strong>{{ $transcriptSettings['registrar_name'] }}</strong><br>
+                {{ $transcriptSettings['registrar_title'] }}
+            </p>
         @endif
-    </div>
-</div>
+    </footer>
+</article>

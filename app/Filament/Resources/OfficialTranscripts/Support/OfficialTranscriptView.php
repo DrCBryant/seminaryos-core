@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OfficialTranscripts\Support;
 
+use App\Filament\Resources\OfficialTranscripts\OfficialTranscriptResource;
 use App\Filament\Resources\OfficialTranscripts\Schemas\OfficialTranscriptForm;
 use App\Filament\Resources\Students\Support\GpaPreview;
 use App\Models\Institution;
@@ -10,6 +11,8 @@ use App\Models\OfficialTranscriptLine;
 use App\Models\Program;
 use App\Models\Student;
 use Filament\Actions\Action;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 
 class OfficialTranscriptView
@@ -37,11 +40,53 @@ class OfficialTranscriptView
             ->icon('heroicon-o-document-text')
             ->color('gray')
             ->visible(fn (OfficialTranscript $record): bool => $record->status === 'issued')
+            ->authorize(fn (OfficialTranscript $record): bool => self::canView($record))
             ->modalHeading('Official Transcript')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Close')
             ->modalWidth('7xl')
             ->modalContent(fn (OfficialTranscript $record) => view('filament.official-transcripts.view', self::getViewData($record)));
+    }
+
+    public function print(string $transcript): Response|RedirectResponse
+    {
+        if (! auth()->check()) {
+            return redirect()->guest(route('filament.admin.auth.login'));
+        }
+
+        $record = OfficialTranscript::query()->where('uuid', $transcript)
+            ->where('institution_id', auth()->user()->current_institution_id)
+            ->where('status', 'issued')->firstOrFail();
+        abort_unless(self::canView($record), 403);
+
+        $data = self::getViewData($record);
+        $number = str($record->transcript_number)->squish()->limit(44)->value();
+        $studentNumber = str($data['document']['student_number'] ?? '')->squish()->limit(25)->value();
+        $identity = ($data['legacy'] ? 'Legacy transcript ' : 'Transcript ').$number
+            .($studentNumber === '' ? '' : ' · Student '.$studentNumber);
+
+        // A CSS string made entirely of Unicode escapes cannot break out of the style element.
+        $data['pageIdentity'] = '"'.implode('', array_map(
+            fn (string $character): string => '\\'.dechex(mb_ord($character)).' ',
+            mb_str_split($identity),
+        )).'"';
+
+        return response()->view('filament.official-transcripts.print', $data, 200, [
+            'Cache-Control' => 'private, no-store',
+            'Referrer-Policy' => 'no-referrer',
+            'X-Frame-Options' => 'DENY',
+        ]);
+    }
+
+    private static function canView(OfficialTranscript $transcript): bool
+    {
+        $actor = auth()->user();
+
+        return $actor !== null && $actor->status === 'active' && $actor->deleted_at === null
+            && (int) $actor->current_institution_id === (int) $transcript->institution_id
+            && ! $transcript->trashed()
+            && $actor->institutions()->whereKey($transcript->institution_id)->wherePivot('status', 'active')->exists()
+            && OfficialTranscriptResource::canView($transcript);
     }
 
     /**

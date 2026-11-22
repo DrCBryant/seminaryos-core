@@ -1,0 +1,253 @@
+@font-face {
+    font-family: Cinzel;
+    src: url("../fonts/transcripts/Cinzel.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: Montserrat;
+    src: url("../fonts/transcripts/Montserrat.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Source Code Pro";
+    src: url("../fonts/transcripts/SourceCodePro.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 200 900;
+    font-display: swap;
+}
+
+.transcript-controls {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0 auto 1rem;
+    max-width: 8.5in;
+}
+
+.transcript-controls :is(a, button) {
+    background: #24384d;
+    border: 1px solid #24384d;
+    border-radius: 0.2rem;
+    color: white;
+    cursor: pointer;
+    display: inline-block;
+    font: 600 0.9rem system-ui, sans-serif;
+    padding: 0.55rem 0.9rem;
+    text-decoration: none;
+}
+
+.transcript-controls button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.transcript-print-page {
+    background: #e8ebee;
+    color: #182331;
+    margin: 1.2rem;
+}
+
+.transcript-print-page .transcript-controls p {
+    font: 0.85rem system-ui, sans-serif;
+    margin: 0;
+}
+
+.transcript-document {
+    background: white;
+    border: 1px solid #c9ced4;
+    box-sizing: border-box;
+    color: #182331;
+    font: 400 9.5pt/1.42 Montserrat, Arial, sans-serif;
+    margin: 0 auto;
+    max-width: 8.5in;
+    overflow-wrap: anywhere;
+    padding: clamp(0.7rem, 4vw, 0.8in);
+}
+
+.transcript-document :is(p, h1, h2, dl, dd) {
+    margin: 0;
+}
+
+.transcript-document .transcript-legacy {
+    border: 1px solid #647385;
+    margin-bottom: 1em;
+    padding: 0.55em 0.75em;
+}
+
+.transcript-heading {
+    border-bottom: 2px solid #24384d;
+    padding-bottom: 0.85em;
+    text-align: center;
+}
+
+.transcript-institution,
+.transcript-heading h1 {
+    font: 600 14pt/1.22 Cinzel, Georgia, serif;
+    letter-spacing: 0.06em;
+}
+
+.transcript-heading h1 {
+    font-size: 19pt;
+    margin-top: 0.35em;
+}
+
+.transcript-details {
+    display: grid;
+    gap: 0.5em 1.35em;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0.95em 0 1.1em;
+}
+
+.transcript-details dt {
+    color: #334759;
+    font-size: 8pt;
+    font-weight: 650;
+}
+
+.transcript-details dd {
+    font-weight: 500;
+}
+
+.transcript-coursework {
+    border-collapse: collapse;
+    font-size: 8pt;
+    margin: 0 0 1em;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.transcript-col-code { width: 11%; }
+.transcript-col-attempted { width: 11.5%; }
+.transcript-col-credits { width: 8.5%; }
+.transcript-col-grade { width: 7%; }
+.transcript-col-status { width: 12%; }
+.transcript-col-date { width: 12%; }
+
+.transcript-coursework :is(th, td) {
+    border-bottom: 1px solid #d7dce2;
+    line-height: 1.36;
+    padding: 0.31em 0.38em;
+    text-align: left;
+    vertical-align: top;
+}
+
+.transcript-coursework .transcript-term {
+    border-bottom: 1px solid #24384d;
+    border-top: 1px solid #24384d;
+    font-size: 9pt;
+    font-weight: 650;
+    letter-spacing: 0.015em;
+}
+
+.transcript-coursework thead th {
+    color: #24384d;
+    font-weight: 650;
+}
+
+.transcript-coursework thead .transcript-number {
+    white-space: nowrap;
+}
+
+.transcript-coursework td {
+    font-family: "Source Code Pro", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+.transcript-coursework .transcript-number {
+    text-align: right;
+}
+
+.transcript-term-total {
+    font-weight: 600;
+}
+
+.transcript-document .transcript-total {
+    border-top: 2px solid #24384d;
+    padding-top: 0.6em;
+}
+
+.transcript-footer,
+.transcript-statement {
+    margin-top: 0.85em;
+}
+
+.transcript-footer:empty {
+    display: none;
+}
+
+.transcript-statement h2 {
+    font: 650 8pt/1.4 Montserrat, Arial, sans-serif;
+}
+
+.transcript-statement p {
+    white-space: pre-line;
+}
+
+.transcript-footer .transcript-registrar {
+    margin-top: 0.75em;
+}
+
+@page transcript {
+    size: letter portrait;
+    margin: 0.8in;
+
+    @bottom-left {
+        color: #334759;
+        font: 500 7pt Montserrat, Arial, sans-serif;
+        vertical-align: middle;
+    }
+
+    @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        color: #334759;
+        font: 500 7pt Montserrat, Arial, sans-serif;
+        vertical-align: middle;
+    }
+}
+
+@media print {
+    .transcript-print-page {
+        background: white;
+        margin: 0;
+        page: transcript;
+    }
+
+    .transcript-print-page .transcript-controls {
+        display: none;
+    }
+
+    .transcript-print-page .transcript-document {
+        border: 0;
+        margin: 0;
+        max-width: none;
+        padding: 0;
+    }
+
+    .transcript-heading,
+    .transcript-details,
+    .transcript-legacy,
+    .transcript-coursework tr,
+    .transcript-registrar {
+        break-inside: avoid;
+    }
+
+    .transcript-coursework thead {
+        display: table-header-group;
+        break-inside: avoid;
+    }
+
+    .transcript-coursework tr:last-child.transcript-term-total {
+        break-before: avoid;
+    }
+
+    .transcript-statement h2 {
+        break-after: avoid;
+    }
+}

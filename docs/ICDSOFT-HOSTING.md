@@ -95,6 +95,8 @@ Before applying the academic-history retention migration, verify the target MySQ
 
 The official transcript document snapshot migration adds nullable columns and database triggers. Existing issuances receive no backfill. Rehearse on a restored backup with the hosting deployment account, verify the existing retention triggers and new trigger privileges, and schedule a write pause for MySQL DDL. The rollback is available before the first document snapshot is written. After issuance, preserve the snapshots with a forward migration.
 
+Official transcript PDF export uses the registrar’s browser and same-origin static CSS, JavaScript, and fonts. Deploy the tracked assets under `public/` with the application. The print route needs a working authenticated admin session and requires no PDF binary, browser installation, queue, or external CDN on ICDSoft. See [official transcript print and export](OFFICIAL-TRANSCRIPT-PRINT.md).
+
 ### Writable Directories
 
 Ensure these directories are writable by the hosting environment:

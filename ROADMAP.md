@@ -78,9 +78,10 @@
 - The issued view uses frozen identity, program, settings, term groups, and coursework. GPA inputs and summaries are captured. Legacy issuances remain identifiable without reconstructing their missing historical values.
 - Publishing awards and aggregate GPA requires institutional policy. Their data contracts are documented.
 
-## Official Transcript PDF Appearance and Export: Pending
+## Official Transcript PDF Appearance and Export: Complete
 
-- Registrar print layout, font licensing, pagination, and verification of the existing client-side export remain separate work.
+- Authorized registrars can open the issued snapshot and save a searchable US Letter PDF through native browser print. The document includes continuation identification, page counts in supported browsers, term subtotals, and self-hosted open fonts.
+- Trajan Pro deployment requires an appropriate license. Award selection and aggregate GPA publication remain separate policy work.
 
 ## Formal Degree Conferral: Registrar Workflow Implemented
 

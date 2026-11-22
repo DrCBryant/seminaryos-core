@@ -45,7 +45,7 @@ class OfficialTranscriptIssuanceTest extends TestCase
 
         $this->institution = $this->institution('home');
         $this->student = $this->student($this->institution);
-        $user = User::factory()->create(['current_institution_id' => $this->institution->id]);
+        $user = User::factory()->create(['current_institution_id' => $this->institution->id, 'status' => 'active']);
         $user->institutions()->attach($this->institution, ['role' => 'admin', 'status' => 'active']);
         $this->actingAs($user);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -455,6 +455,53 @@ class OfficialTranscriptIssuanceTest extends TestCase
         $this->assertStringContainsString('Grade points are missing', $component->instance()->getMountedAction()->getModalContent()->render());
     }
 
+    public function test_print_page_uses_snapshot_settings_and_stored_content_without_external_export_scripts(): void
+    {
+        $this->academicRecord('BIB-101')->update(['grade_points' => 4, 'affects_gpa' => true, 'credits_attempted' => 3]);
+        $setting = TranscriptSetting::create([
+            'institution_id' => $this->institution->id, 'transcript_title' => 'Issued Transcript',
+            'show_grade_points' => false, 'show_status' => false, 'is_active' => true,
+        ]);
+        $draft = $this->transcript();
+        $this->assertTrue($this->issue($draft, $this->issueData()));
+        $setting->update(['show_grade_points' => true, 'show_status' => true]);
+        $this->student->update(['first_name' => 'Current']);
+
+        $this->get(route('official-transcripts.print', $draft->uuid))
+            ->assertOk()->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertSee('Print / Save PDF')->assertSee('Issued Transcript')
+            ->assertSee('Ada Student')->assertSee('BIB-101')
+            ->assertDontSee('Current Student')->assertDontSee('>Points</th>', false)
+            ->assertDontSee('>Status</th>', false)->assertDontSee('html2pdf')->assertDontSee('cdnjs.cloudflare.com');
+    }
+
+    public function test_print_page_rejects_guests_drafts_other_institutions_and_inactive_memberships(): void
+    {
+        $own = $this->transcript(number: 'LEGACY', status: 'issued');
+        $draft = $this->transcript();
+        $foreign = $this->transcript($this->student($this->institution('print-other')), status: 'issued');
+        $ownUrl = route('official-transcripts.print', $own->uuid);
+
+        $this->get(route('official-transcripts.print', $draft->uuid))->assertNotFound();
+        $this->get(route('official-transcripts.print', $foreign->uuid))->assertNotFound();
+        $this->get($ownUrl)->assertOk()->assertSee('Legacy issued transcript')->assertDontSee('Ada Student');
+
+        DB::table('institution_user')->where('user_id', auth()->id())->update(['status' => 'suspended']);
+        $this->get($ownUrl)->assertForbidden();
+
+        auth()->logout();
+        $this->get($ownUrl)->assertRedirect(route('filament.admin.auth.login'));
+    }
+
+    public function test_print_page_honors_record_view_permission(): void
+    {
+        $issued = $this->transcript(status: 'issued');
+        Gate::policy(OfficialTranscript::class, DenyTranscriptViewPolicy::class);
+
+        $this->get(route('official-transcripts.print', $issued->uuid))->assertForbidden();
+    }
+
     private function viewData(OfficialTranscript $transcript): array
     {
         return (new ReflectionMethod(OfficialTranscriptView::class, 'getViewData'))->invoke(null, $transcript->fresh());
@@ -532,6 +579,14 @@ class OfficialTranscriptIssuanceTest extends TestCase
 class DenyTranscriptUpdatePolicy
 {
     public function update(User $user, OfficialTranscript $transcript): bool
+    {
+        return false;
+    }
+}
+
+class DenyTranscriptViewPolicy
+{
+    public function view(User $user, OfficialTranscript $transcript): bool
     {
         return false;
     }

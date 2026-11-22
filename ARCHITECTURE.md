@@ -101,7 +101,7 @@ See [ADR 0001](docs/adr/0001-record-degree-conferral-as-a-durable-award.md) for 
 - The awards list starts empty until an institution approves which durable `DegreeConferral` records may appear, including whether to include all programs or only the applicable program and whether the issue date limits inclusion. The versioned payload accepts approved award identifiers, captured program code/title, credential and conferral dates. Rendering uses saved award fields when present. Student status and current program labels never determine awards.
 - The **Legacy issued transcripts** filter identifies records without a document snapshot. Their view labels the missing capture explicitly and shows surviving issued number, date and academic lines. Optional settings-dependent details and missing historical identity or GPA are omitted. Legacy term groups use their surviving term ID, then label where no ID survives. Existing records are preserved without backfill. The **Issued without snapshot lines** filter remains available for registrar review.
 - Student transcript and GPA previews remain advisory and use current records.
-- Transcript output remains browser-rendered/printable with the existing client-side export path; no server-side binary PDF infrastructure or external delivery service is introduced.
+- The issued preview and authenticated print page share one Blade document. The print page reads the same immutable source and uses native browser Save as PDF with local print CSS and fonts. Export access requires an active membership in the selected institution and the existing record-view permission. See [official transcript print and export](docs/OFFICIAL-TRANSCRIPT-PRINT.md).
 
 ### Intentionally deferred
 
