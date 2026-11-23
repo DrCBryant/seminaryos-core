@@ -34,6 +34,15 @@ class AcademicIdentityAccess
             && (int) $record->student_id === (int) $student->id;
     }
 
+    public static function viewMentee(User $actor, Student $student): bool
+    {
+        $faculty = self::faculty($actor);
+
+        return $faculty !== null && ! $student->trashed()
+            && (int) $student->institution_id === (int) $faculty->institution_id
+            && $faculty->mentees()->withoutGlobalScope(InstitutionScope::class)->whereKey($student->id)->exists();
+    }
+
     public static function viewTeachingAssignment(User $actor, TeachingAssignment $assignment): bool
     {
         $faculty = self::faculty($actor);

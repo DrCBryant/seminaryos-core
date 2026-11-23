@@ -67,6 +67,7 @@ class StudentPortal extends Page
             'name' => $student->full_name,
             'institutionName' => $student->institution->name,
             'programTitle' => $student->program?->title,
+            'facultyUrl' => AcademicIdentityAccess::faculty($actor) ? route('filament.faculty.pages.overview') : null,
             'registrarUrl' => $actor->canAccessRegistrar() ? route('filament.admin.pages.dashboard') : null,
             ...match ($this->section) {
                 'overview' => [

@@ -13,7 +13,7 @@
 
 - The Student Portal at `/student` uses the shared Laravel session. It requires an active account, an active membership in the selected active institution, and an explicitly linked Student identity. It checks `view-own-student-identity` on every render and loads data through the linked Student and tenant-scoped queries. The URL selects a view without accepting a student or record ID.
 - The portal displays current enrollments and finalized academic history. Course outcomes come from the linked academic record, and the reporting term follows the existing registrar resolver. Degree Progress is advisory and shows student-facing audit results. Awards display the program details and date captured at conferral.
-- Users with registrar access can open the Registrar workspace from the same session. The Faculty Portal and institution and experience switchers remain future work.
+- Eligible users can open the Faculty Portal or Registrar workspace from the same session. A user-facing institution switcher remains future work.
 
 ### Faculty Assessment Authority
 
@@ -21,6 +21,12 @@
 - In competency-based education, Faculty Mentors evaluate their assigned students and enter grades, competency results, and master assessments. In non-competency-based courses, assigned Course Instructors evaluate enrolled students and enter course grades.
 - Authorize each assessment action in the active institutional context using the applicable student mentorship or course teaching assignment. Each assignment grants authority only within its assigned scope.
 - Faculty assessment entry must reuse established grading, evidence, and guarded completion workflows. Finalized academic history remains protected under the existing durable record rules. Registrar review and finalization must follow explicit institutional policy.
+
+### Faculty Portal
+
+- `/faculty` requires an active account, active institution and membership, and an explicitly linked Faculty identity. The linked Student identity and registrar permissions are evaluated independently.
+- **My Mentees** requires an explicit same-institution assignment managed from the Faculty edit page. It shows the assigned student's program, competency requirements, supporting course evidence, and recorded section Master Assessment history. **My Courses** uses active or assigned teaching records to show the matching enrollments, current progress evidence, and finalized course outcomes.
+- Faculty Portal academic views are read-only. Existing registrar workflows retain responsibility for recording and finalizing academic outcomes. See [ADR 0004](docs/adr/0004-scope-faculty-portal-access-to-academic-assignments.md) for the assignment and access boundaries.
 
 ### Course Achievement and Competency Attainment
 
@@ -80,7 +86,7 @@
 
 ## Faculty and Teaching Assignments
 
-- `Faculty` is institution-scoped academic personnel identity and is separate from `User` authentication. Faculty records do not require login accounts, and Faculty Portal authentication is deferred.
+- `Faculty` is institution-scoped academic personnel identity and is separate from `User` authentication. Faculty records do not require login accounts. The Faculty Portal resolves explicitly linked Faculty records through the shared Laravel session.
 - `TeachingAssignment` is the instructional assignment record. `CourseOffering` remains the operational Class Section context, and offering-backed assignments inherit its course and AcademicTerm context.
 - Faculty status and assignment role/status vocabularies are centralized as model string options. Status changes are administrative and do not automatically transition or delete assignments.
 - Multiple faculty assignments and roles remain supported; no new primary-instructor uniqueness policy is inferred.

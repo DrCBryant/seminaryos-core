@@ -64,6 +64,7 @@ class User extends Authenticatable implements FilamentUser
     {
         return match ($panel->getId()) {
             'admin' => $this->canAccessRegistrar(),
+            'faculty' => AcademicIdentityAccess::faculty($this) !== null,
             'student' => AcademicIdentityAccess::student($this) !== null,
             default => false,
         };

@@ -55,3 +55,6 @@
 .student-portal-status { background: var(--portal-tint); color: var(--portal-accent); border-radius: 0.3rem; padding: 0.12rem 0.5rem; font-size: 0.82rem; }
 .student-portal-award { padding: 0.85rem 1.15rem; }
 .student-portal-award p:last-child { color: var(--portal-muted); }
+
+.faculty-portal .student-portal-group a { color: var(--portal-accent); text-decoration: underline; overflow-wrap: anywhere; }
+.faculty-portal .student-portal-group a[aria-current] { font-weight: 650; }

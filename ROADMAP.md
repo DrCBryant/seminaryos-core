@@ -96,7 +96,13 @@
 ## Read-only Student Portal: Complete
 
 - Linked students can use their existing account to view their overview, courses, finalized academic record, advisory degree progress, and conferred awards in the selected institution.
-- The Faculty Portal, institution and experience switchers, and student self-service workflows remain separate work.
+- Institution switching and student self-service workflows remain separate work.
+
+## Read-only Faculty Portal: Complete
+
+- Linked faculty can use their existing account to review assigned mentees and teaching rosters, competency evidence, section Master Assessment history, and recorded course progress and outcomes.
+- Institution administrators assign and remove mentees from the existing Faculty edit page. Dual-identity users can open either portal from the same session.
+- Faculty assessment entry and program-level mastery verification require explicit institutional decisions on assessment mapping, grading authority, registrar review, and finalization.
 
 ## Outside the Completed Academic Terms Goal
 

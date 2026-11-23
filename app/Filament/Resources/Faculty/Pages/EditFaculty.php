@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Faculty\Pages;
 
 use App\Filament\Actions\LinkAcademicAccount;
+use App\Filament\Actions\ManageFacultyMentorship;
 use App\Filament\Resources\Faculty\FacultyResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
@@ -16,6 +17,8 @@ class EditFaculty extends EditRecord
     {
         return [
             LinkAcademicAccount::make(),
+            ManageFacultyMentorship::make(assign: true),
+            ManageFacultyMentorship::make(assign: false),
             DeleteAction::make(),
             RestoreAction::make(),
         ];

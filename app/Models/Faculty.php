@@ -7,6 +7,7 @@ use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -61,6 +62,12 @@ class Faculty extends BaseModel
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
+    }
+
+    public function mentees(): BelongsToMany
+    {
+        return $this->belongsToMany(Student::class, 'faculty_mentorships')
+            ->withPivotValue('institution_id', $this->institution_id);
     }
 
     public function teachingAssignments(): HasMany

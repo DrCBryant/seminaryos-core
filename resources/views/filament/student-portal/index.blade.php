@@ -4,9 +4,14 @@
     <div class="student-portal">
         <div class="student-portal-context">
             <p>{{ $institutionName }} <span aria-hidden="true">/</span> {{ $name }}</p>
-            @if ($registrarUrl)
-                <a href="{{ $registrarUrl }}">Registrar workspace</a>
-            @endif
+            <div>
+                @if ($facultyUrl)
+                    <a href="{{ $facultyUrl }}">Faculty Portal</a>
+                @endif
+                @if ($registrarUrl)
+                    <a class="ms-3" href="{{ $registrarUrl }}">Registrar workspace</a>
+                @endif
+            </div>
         </div>
 
         <nav class="student-portal-nav" aria-label="Student portal">
