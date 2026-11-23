@@ -39,7 +39,7 @@ This document is descriptive architecture guidance only. It does not define impl
 2. Use **Assign Mentee** or **Remove Mentee** on the same Faculty record. These actions scope student selection to the institution. Create teaching assignments through the existing **Teaching Assignments** resource.
 3. The faculty member signs in at `/faculty/login` or opens `/faculty` using the existing session. **My Mentees** shows assigned students and competency evidence. **My Courses** shows enrollments for exact assigned sections or, for a direct assignment, only sectionless enrollments for the course and matching term.
 4. Registrar administrators open a program requirement group and use **Map Master Assessment** or **Remove Assessment Mapping** on a competency requirement. Both sides must belong to the selected institution.
-5. In **My Mentees**, an assigned mentor can select **Finalize mastery** for a passed attempt on an active mapped assessment in the mentee’s program. This permanently records competency mastery. **My Courses** remains read-only, and only an authorized Registrar can formally confer the credential.
+5. In **My Mentees**, an assigned mentor can use **Review assessment** for a submitted attempt on an active mapped assessment in the mentee’s program. Review the evidence, select a result, enter feedback, and choose **Finalize result**. Passed immediately verifies mastery. The **Finalize mastery** action remains available for previously recorded passed attempts. **My Courses** remains read-only, and only an authorized Registrar can formally confer the credential.
 
 ## Core Tenancy Principles
 

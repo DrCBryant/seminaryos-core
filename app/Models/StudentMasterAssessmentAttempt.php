@@ -6,6 +6,7 @@ use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StudentMasterAssessmentAttempt extends BaseModel
 {
@@ -32,6 +33,12 @@ class StudentMasterAssessmentAttempt extends BaseModel
         self::STATUS_ARCHIVED => 'Archived',
     ];
 
+    public const MENTOR_RESULTS = [
+        self::STATUS_PASSED => self::STATUS_OPTIONS[self::STATUS_PASSED],
+        self::STATUS_REVISION_NEEDED => self::STATUS_OPTIONS[self::STATUS_REVISION_NEEDED],
+        self::STATUS_FAILED => self::STATUS_OPTIONS[self::STATUS_FAILED],
+    ];
+
     protected $fillable = [
         'institution_id',
         'uuid',
@@ -51,6 +58,11 @@ class StudentMasterAssessmentAttempt extends BaseModel
         'submitted_at' => 'datetime',
         'assessed_at' => 'datetime',
     ];
+
+    public function mentorResult(): HasOne
+    {
+        return $this->hasOne(MentorAssessmentResult::class, 'attempt_id');
+    }
 
     public function institution(): BelongsTo
     {

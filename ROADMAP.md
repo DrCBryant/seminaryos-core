@@ -109,6 +109,11 @@
 - Registrar administrators map section-bound Master Assessments to program competencies. An assigned Faculty Mentor can finalize a recorded passed attempt for its eligible mappings. The audit recognizes the permanent decision immediately, and the Registrar authorizes formal conferral.
 - Section-independent assessment, new grading scales or mastery thresholds, reassessment limits, and a correction workflow remain institutional policy work.
 
+## Faculty Mentor Master Assessment Entry: Complete
+
+- Faculty Mentors review existing submitted attempts on mapped assessments and explicitly finalize Passed, Revision Needed, or Failed with feedback. A final Passed result records verified mastery in the same transaction. The Registrar continues to authorize formal conferral.
+- The workflow uses recorded assessment guidance and existing result statuses. Reassessment, corrections, section-independent assessment, and new grading scales remain separate policy work.
+
 ## Outside the Completed Academic Terms Goal
 
 Student self-service registration, late-registration approval, add/drop deadlines, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.

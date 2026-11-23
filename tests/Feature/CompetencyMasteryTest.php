@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Filament\Faculty\Pages\FacultyPortal;
+use App\Filament\Resources\MasterAssessments\Pages\EditMasterAssessment;
+use App\Filament\Resources\MasterAssessments\RelationManagers\StudentMasterAssessmentAttemptsRelationManager;
 use App\Filament\Resources\ProgramRequirementGroups\Pages\EditProgramRequirementGroup;
 use App\Filament\Resources\ProgramRequirementGroups\RelationManagers\ProgramRequirementsRelationManager;
 use App\Filament\Resources\Students\Pages\EditStudent;
@@ -16,6 +18,7 @@ use App\Models\DegreeConferral;
 use App\Models\Faculty;
 use App\Models\Institution;
 use App\Models\MasterAssessment;
+use App\Models\MentorAssessmentResult;
 use App\Models\Program;
 use App\Models\ProgramRequirement;
 use App\Models\ProgramRequirementGroup;
@@ -250,6 +253,143 @@ class CompetencyMasteryTest extends TestCase
         $this->get('/faculty?section=mentees&selection='.$this->student->id)->assertForbidden();
         $this->expectException(ModelNotFoundException::class);
         $this->finalize($attempt);
+    }
+
+    public function test_mentor_reviews_and_explicitly_finalizes_a_passed_attempt_without_touching_course_history(): void
+    {
+        $requirement = $this->requirement('Mapped competency');
+        $assessment = $this->assessment();
+        $this->map($requirement, $assessment);
+        $this->actingAs($this->admin);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $attemptsPage = ['ownerRecord' => $assessment, 'pageClass' => EditMasterAssessment::class];
+        Livewire::test(StudentMasterAssessmentAttemptsRelationManager::class, $attemptsPage)
+            ->callTableAction('create', data: [
+                'student_id' => $this->student->id,
+                'status' => StudentMasterAssessmentAttempt::STATUS_SUBMITTED,
+                'notes' => 'Original submitted evidence',
+                'submitted_at' => '2026-10-01 12:00:00',
+            ])->assertHasNoTableActionErrors();
+        $attempt = $assessment->studentMasterAssessmentAttempts()->sole();
+        $enrollment = CourseEnrollment::create([
+            'institution_id' => $this->institution->id, 'student_id' => $this->student->id,
+            'course_id' => $this->course->id, 'course_offering_id' => $this->section->id, 'status' => 'enrolled',
+        ]);
+        $this->actingAs($this->mentor);
+        Filament::setCurrentPanel(Filament::getPanel('faculty'));
+        $page = Livewire::withQueryParams(['section' => 'mentees', 'selection' => $this->student->id])->test(FacultyPortal::class)
+            ->assertSee('Review assessment')->assertDontSee('Original submitted evidence')
+            ->mountAction('reviewAssessment', arguments: ['attempt' => $attempt->id]);
+        $modal = $page->instance()->getMountedAction()->getModalContent()->toHtml();
+        $this->assertStringContainsString('Original submitted evidence', $modal);
+        $this->assertStringContainsString('Recorded rubric', $modal);
+        $page->setActionData(['status' => StudentMasterAssessmentAttempt::STATUS_PASSED, 'feedback' => 'Competency demonstrated']);
+        $this->assertSame(StudentMasterAssessmentAttempt::STATUS_SUBMITTED, $attempt->fresh()->status);
+        $this->assertDatabaseCount('mentor_assessment_results', 0);
+        $this->assertDatabaseCount('competency_mastery_decisions', 0);
+
+        $page->callMountedAction()->assertHasNoActionErrors();
+        $result = $attempt->mentorResult()->sole();
+        $decision = CompetencyMasteryDecision::query()->sole();
+        $current = $attempt->fresh();
+        $this->assertSame($this->mentor->id, $current->assessor_user_id);
+        $this->assertSame('Competency demonstrated', $current->assessor_notes);
+        $this->assertSame('Original submitted evidence', $current->notes);
+        $this->assertSame('2026-10-01', $current->submitted_at->toDateString());
+        $this->assertTrue($current->assessed_at->equalTo($result->decided_at));
+        $this->assertTrue($current->assessed_at->equalTo($decision->decided_at));
+        $this->assertSame('Original submitted evidence', $decision->snapshot['attempt']['notes']);
+        $this->assertSame($requirement->id, DegreeAuditPreview::getViewData($this->student)['completedRequirements']->sole()['requirement']->id);
+        $this->assertSame('satisfied', SectionProgressEvaluator::evaluateEnrollment($enrollment)['progress_status']);
+        $this->assertSame('enrolled', $enrollment->fresh()->status);
+        $this->assertDatabaseCount('academic_records', 0);
+        $this->assertDatabaseCount('degree_conferrals', 0);
+
+        $this->actingAs($this->admin);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Livewire::test(StudentMasterAssessmentAttemptsRelationManager::class, $attemptsPage)
+            ->assertCanSeeTableRecords([$current])
+            ->assertActionHidden(TestAction::make('edit')->table($current));
+    }
+
+    public function test_mentor_result_is_immutable_and_stale_actions_cannot_replace_it(): void
+    {
+        $assessment = $this->assessment();
+        $this->map($this->requirement('Mapped competency'), $assessment);
+        $attempt = $this->attempt($assessment, StudentMasterAssessmentAttempt::STATUS_SUBMITTED);
+        $this->actingAs($this->mentor);
+        Filament::setCurrentPanel(Filament::getPanel('faculty'));
+        $query = ['section' => 'mentees', 'selection' => $this->student->id];
+        $first = Livewire::withQueryParams($query)->test(FacultyPortal::class)->mountAction('reviewAssessment', arguments: ['attempt' => $attempt->id]);
+        $stale = Livewire::withQueryParams($query)->test(FacultyPortal::class)->mountAction('reviewAssessment', arguments: ['attempt' => $attempt->id]);
+        $payload = ['status' => StudentMasterAssessmentAttempt::STATUS_REVISION_NEEDED, 'feedback' => 'Strengthen the evidence'];
+        $first->setActionData($payload)->callMountedAction()->assertHasNoActionErrors();
+        $stale->setActionData(['status' => StudentMasterAssessmentAttempt::STATUS_PASSED])->callMountedAction();
+        $result = $this->recordResult($attempt, $payload);
+        $this->assertSame($payload['status'], $result->status);
+        $this->assertSame($payload['feedback'], $attempt->fresh()->assessor_notes);
+        $this->assertDatabaseCount('mentor_assessment_results', 1);
+        $this->assertDatabaseCount('competency_mastery_decisions', 0);
+        $this->assertCount(1, DegreeAuditPreview::getViewData($this->student)['notEvaluatedRequirements']);
+        $this->assertRejected(fn () => $attempt->fresh()->update(['status' => StudentMasterAssessmentAttempt::STATUS_PASSED]));
+        $this->assertRejected(fn () => $attempt->fresh()->update(['notes' => 'Replace original evidence']));
+        $this->assertRejected(fn () => $result->delete());
+        $this->assertRejected(fn () => $attempt->delete());
+    }
+
+    public function test_review_rejects_unsubmitted_and_unmapped_attempts_and_a_failed_result_keeps_mastery_unverified(): void
+    {
+        $assessment = $this->assessment();
+        $this->map($this->requirement('Mapped competency'), $assessment);
+        $attempt = $this->attempt($assessment, StudentMasterAssessmentAttempt::STATUS_NOT_STARTED);
+        $unmapped = $this->attempt($this->assessment(), StudentMasterAssessmentAttempt::STATUS_SUBMITTED);
+        $this->actingAs($this->mentor);
+        foreach ([$attempt, $unmapped] as $ineligible) {
+            try {
+                $this->recordResult($ineligible, ['status' => StudentMasterAssessmentAttempt::STATUS_FAILED]);
+                $this->fail('An ineligible attempt was recorded.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('attempt', $exception->errors());
+            }
+        }
+        $attempt->update(['status' => StudentMasterAssessmentAttempt::STATUS_SUBMITTED]);
+        $this->assertSame(StudentMasterAssessmentAttempt::STATUS_FAILED,
+            $this->recordResult($attempt, ['status' => StudentMasterAssessmentAttempt::STATUS_FAILED])->status);
+        $this->assertDatabaseCount('competency_mastery_decisions', 0);
+        $this->assertCount(1, DegreeAuditPreview::getViewData($this->student)['notEvaluatedRequirements']);
+    }
+
+    public function test_instructor_or_student_links_cannot_grant_mentor_review_and_foreign_attempts_are_rejected(): void
+    {
+        $assessment = $this->assessment();
+        $this->map($this->requirement('Mapped competency'), $assessment);
+        $attempt = $this->attempt($assessment, StudentMasterAssessmentAttempt::STATUS_SUBMITTED);
+        $studentAccount = $this->account('student');
+        AcademicIdentityAccess::link($this->admin, $this->student, $studentAccount->institutions()->firstOrFail()->pivot->id);
+        $this->faculty->teachingAssignments()->create([
+            'institution_id' => $this->institution->id, 'course_id' => $this->course->id,
+            'course_offering_id' => $this->section->id, 'role' => 'primary_instructor', 'status' => 'active',
+        ]);
+        $this->faculty->mentees()->detach($this->student);
+        foreach ([$studentAccount, $this->mentor] as $actor) {
+            $this->actingAs($actor);
+            try {
+                $this->recordResult($attempt, ['status' => StudentMasterAssessmentAttempt::STATUS_PASSED], $actor);
+                $this->fail('An account without mentorship recorded an assessment.');
+            } catch (HttpException $exception) {
+                $this->assertSame(403, $exception->getStatusCode());
+            }
+        }
+        $this->faculty->mentees()->attach($this->student);
+        $foreign = Institution::create(['name' => 'Foreign', 'slug' => 'foreign', 'type' => 'seminary']);
+        $foreignAttempt = $this->attempt($this->assessment((int) $foreign->id), StudentMasterAssessmentAttempt::STATUS_SUBMITTED);
+        $this->expectException(ModelNotFoundException::class);
+        $this->recordResult($foreignAttempt, ['status' => StudentMasterAssessmentAttempt::STATUS_PASSED]);
+    }
+
+    private function recordResult(StudentMasterAssessmentAttempt $attempt, array $data, ?User $actor = null): MentorAssessmentResult
+    {
+        return app(FinalizeCompetencyMastery::class)->recordResult($actor ?? $this->mentor, $this->student->id, $attempt->id, $data);
     }
 
     private function account(string $role): User

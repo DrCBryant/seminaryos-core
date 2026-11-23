@@ -15,6 +15,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class StudentMasterAssessmentAttemptsRelationManager extends RelationManager
 {
@@ -26,6 +27,7 @@ class StudentMasterAssessmentAttemptsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('student_id')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('mentorResult'))
             ->columns([
                 TextColumn::make('student.full_name')
                     ->label('Student')
@@ -44,6 +46,7 @@ class StudentMasterAssessmentAttemptsRelationManager extends RelationManager
                 TextColumn::make('assessed_at')
                     ->dateTime()
                     ->sortable(),
+                TextColumn::make('mentorResult.decided_at')->label('Mentor finalized')->dateTime(),
                 TextColumn::make('assessorUser.name')
                     ->label('Assessor')
                     ->sortable(),
@@ -97,7 +100,7 @@ class StudentMasterAssessmentAttemptsRelationManager extends RelationManager
                     ]),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->hidden(fn (StudentMasterAssessmentAttempt $record): bool => $record->mentorResult !== null),
             ]);
     }
 }

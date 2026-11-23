@@ -87,10 +87,18 @@
             <h2>Section Master Assessment history</h2>
             @include('filament.student-portal.table', [
                 'label' => 'Section Master Assessment history',
-                'columns' => ['title' => 'Assessment', 'status' => 'Attempt status', 'submitted' => 'Submitted', 'assessed' => 'Assessed', 'finalized' => 'Mastery finalized'],
+                'columns' => ['title' => 'Assessment', 'status' => 'Attempt status', 'submitted' => 'Submitted', 'assessed' => 'Assessed', 'resultFinalized' => 'Result finalized', 'finalized' => 'Mastery finalized'],
                 'rows' => $mentee['attempts'],
                 'emptyMessage' => 'No Master Assessment attempts are on record.',
             ])
+            @foreach ($mentee['attempts']->where('canReview', true) as $attempt)
+                <div class="student-portal-context">
+                    <span>{{ $attempt['title'] }}</span>
+                    <x-filament::button wire:click="mountAction('reviewAssessment', { attempt: {{ $attempt['id'] }} })">
+                        Review assessment
+                    </x-filament::button>
+                </div>
+            @endforeach
             @foreach ($mentee['attempts']->where('canFinalize', true) as $attempt)
                 <div class="student-portal-context">
                     <span>{{ $attempt['title'] }}</span>
