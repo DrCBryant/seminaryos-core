@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Portals\AcademicIdentityAccess;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -61,7 +62,11 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $panel->getId() === 'admin' && $this->canAccessRegistrar();
+        return match ($panel->getId()) {
+            'admin' => $this->canAccessRegistrar(),
+            'student' => AcademicIdentityAccess::student($this) !== null,
+            default => false,
+        };
     }
 
     public function canAccessRegistrar(?int $institutionId = null): bool

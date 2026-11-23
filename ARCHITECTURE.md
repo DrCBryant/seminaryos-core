@@ -4,10 +4,16 @@
 
 - `User` is the shared Laravel authentication account. `Student` and `Faculty` are independent academic identities. An institution membership can link explicitly to one of each at the same time. One account can hold different links and roles in other institutions. A link never creates an academic record or matches by email.
 - The selected `current_institution_id` must resolve to an active institution with an active membership and an active account. Authenticated tenant queries fail closed when any element is missing. Unauthenticated jobs, imports, and console operations retain the existing query behavior. Web entry points must apply authorization before exposing academic data.
-- Tenant context is necessary for portal access. The application's named gates separately check student ownership, faculty ownership, and active teaching assignment. Faculty assignment checks grant access to the assigned teaching context only. Future Student and Faculty experiences use the same session and choose their own applicable gates.
+- Tenant context is necessary for portal access. The application's named gates separately check student ownership, faculty ownership, and active teaching assignment. Faculty assignment checks grant access to the assigned teaching context only. Portal experiences use the shared session and choose the gates that apply to their academic identity.
 - The admin panel and registrar print page require administrative membership in the selected institution. The `admin` and `super_admin` roles can manage identity links when the record can be edited. Staff retain registrar panel access and cannot manage links. The existing Student and Faculty edit actions link, replace, or clear an active institutional account.
 - Composite foreign keys bind identity and membership to the same institution. Removing an account or membership removes its links. Suspending an account or membership disables access while preserving the links. Neither operation deletes the academic identities or their history. Separate historical references can still block hard deletion of an authorizing account.
 - See [ADR 0002](docs/adr/0002-link-academic-identities-to-institution-memberships.md) and the [permissions guide](docs/08-PERMISSIONS-AND-TENANCY.md) for the authorization contract and deferred policy decisions.
+
+### Read-only Student Portal
+
+- The Student Portal at `/student` uses the shared Laravel session. It requires an active account, an active membership in the selected active institution, and an explicitly linked Student identity. It checks `view-own-student-identity` on every render and loads data through the linked Student and tenant-scoped queries. The URL selects a view without accepting a student or record ID.
+- The portal displays current enrollments and finalized academic history. Course outcomes come from the linked academic record, and the reporting term follows the existing registrar resolver. Degree Progress is advisory and shows student-facing audit results. Awards display the program details and date captured at conferral.
+- Users with registrar access can open the Registrar workspace from the same session. The Faculty Portal and institution and experience switchers remain future work.
 
 ## Academic Terms
 

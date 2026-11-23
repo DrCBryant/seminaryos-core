@@ -26,7 +26,12 @@ This document is descriptive architecture guidance only. It does not define impl
 - Inactive accounts or memberships cannot act through their links. Removing a membership, including account deletion that cascades to memberships, removes the links while preserving academic identities and history. Academic eligibility remains an independent domain decision.
 - Each portal experience can resolve its own link within the same session. Institution switching is reflected immediately when the stored context changes. A user-facing institution or experience switcher and invitation/provisioning rules remain future work.
 
-The remaining role and navigation sections describe the broader design where noted. The implemented boundaries above govern current portal foundation and registrar access.
+### Using the Student Portal
+
+1. In Registrar, an administrator opens the Student record for the selected institution and uses **Link Account** to select an active member.
+2. The student signs in at `/student/login` with their existing SeminaryOS account, or opens `/student` directly when already signed in. Access follows the selected institution.
+3. The student can open **Overview**, **My Courses**, **Academic Record**, **Degree Progress**, and **Awards**. These views show only their own records in that institution. Academic outcomes are finalized records, degree progress is advisory, and awards show the details captured at conferral. Staff notes and internal audit evidence stay private.
+4. Users with access to Registrar can follow **Registrar Workspace** using the same session. Institution and experience switchers remain future work.
 
 ## Core Tenancy Principles
 
@@ -147,7 +152,7 @@ Operational user supporting institution administration, publishing, and content 
 Reserved role for future authenticated student-facing capabilities.
 
 #### What Student can see
-- Future student portal data for the currently selected institution
+- Student Portal data for the currently selected institution
 - Public or student-authorized academic information once student modules exist
 
 #### What Student can edit
@@ -333,7 +338,7 @@ For the current phase of SeminaryOS, the simplest stable policy model is:
 - Institution Admin manages all institution-owned modules within their institution
 - Faculty portal actions require explicit academic identity and assigned-teaching authorization
 - Staff manages operational content where permitted
-- Student portal actions require a linked student identity and record ownership. The student experience remains future work.
+- Student Portal access requires a linked Student identity and is scoped to records owned by that identity. The current portal is read-only.
 
 This is sufficient for the present institution, website, program, course, and catalog scope while leaving room for finer-grained permissions later.
 
@@ -347,7 +352,7 @@ Later phases may extend this document with:
 - section-level curriculum permissions
 - publish vs edit separation
 - reviewer and approver workflows
-- student portal screens and permitted self-service actions
+- permitted student self-service actions
 - faculty self-service profile and teaching assignments
 - audit visibility policies
 

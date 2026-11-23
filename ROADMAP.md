@@ -91,8 +91,13 @@
 ## Portal Identity and Authorization Foundations: Complete
 
 - Existing institutional accounts can link independently to Student and Faculty identities, including both in one institution. Administrators can manage links from the existing resources. Ownership and teaching-context gates depend on active tenant membership.
-- Student and Faculty portal screens, identity navigation, membership provisioning, and additional delegated permissions remain separate work.
+- Membership provisioning and additional delegated permissions remain separate work.
+
+## Read-only Student Portal: Complete
+
+- Linked students can use their existing account to view their overview, courses, finalized academic record, advisory degree progress, and conferred awards in the selected institution.
+- The Faculty Portal, institution and experience switchers, and student self-service workflows remain separate work.
 
 ## Outside the Completed Academic Terms Goal
 
-Student self-service registration, late-registration approval, add/drop deadlines, portal work, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.
+Student self-service registration, late-registration approval, add/drop deadlines, optional demo data, and future vocabulary constraints require separately scoped work. Academic Terms refinement is no longer an active task.
