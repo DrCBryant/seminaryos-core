@@ -15,6 +15,13 @@
 - The portal displays current enrollments and finalized academic history. Course outcomes come from the linked academic record, and the reporting term follows the existing registrar resolver. Degree Progress is advisory and shows student-facing audit results. Awards display the program details and date captured at conferral.
 - Users with registrar access can open the Registrar workspace from the same session. The Faculty Portal and institution and experience switchers remain future work.
 
+### Faculty Assessment Authority
+
+- Faculty Mentor and Course Instructor describe assigned academic responsibilities. A faculty member may hold both assignments at the same time, including while holding a Student identity through the same account.
+- In competency-based education, Faculty Mentors evaluate their assigned students and enter grades, competency results, and master assessments. In non-competency-based courses, assigned Course Instructors evaluate enrolled students and enter course grades.
+- Authorize each assessment action in the active institutional context using the applicable student mentorship or course teaching assignment. Each assignment grants authority only within its assigned scope.
+- Faculty assessment entry must reuse established grading, evidence, and guarded completion workflows. Finalized academic history remains protected under the existing durable record rules. Registrar review and finalization must follow explicit institutional policy.
+
 ## Academic Terms
 
 - `AcademicTerm` is an institution-scoped core academic operations model. Its existing institution scope and relationships remain authoritative.
