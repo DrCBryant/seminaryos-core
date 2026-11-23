@@ -167,6 +167,14 @@ class DegreeAuditPreview
         array &$usedRecordIds,
         array &$remainingCreditsByRecordId,
     ): array {
+        if ($requirement->requirement_type === ProgramRequirement::TYPE_COMPETENCY) {
+            return self::baseRequirementResult(
+                $requirement,
+                'not_evaluated',
+                'Competency attainment requires a verified Master Assessment for this requirement. The audit cannot verify that link yet.',
+            );
+        }
+
         $substitutionResult = self::evaluateRequirementSubstitution(
             $requirement,
             $records,

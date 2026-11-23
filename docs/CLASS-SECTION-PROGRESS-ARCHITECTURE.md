@@ -83,25 +83,15 @@ This phase does **not** yet implement full section completion approval workflows
 
 ### Master Assessment
 
-Master Assessment supports competency-based education where the student completes the section by demonstrating required outcomes at the required level.
+A section configured with the `master_assessment` progress basis uses `SectionProgressEvaluator` to evaluate the student's attempts against the active assessments for that section. Passed attempts can support a guarded enrollment completion decision. The evaluator reports progress, and `EnrollmentCompletionService` records the course outcome when completion is authorized and validated.
 
-For Kerygma’s competency-based model:
+A Master Assessment belongs to a section. An attempt can be stored without an enrollment because its enrollment foreign key is nullable. That still leaves the attempt tied to a section and does not establish a program-level competency assessment workflow.
 
-- some sections may include assignments along the way,
-- but the official completion decision may rest on the Master Assessment.
+A course or section may provide learning evidence for several program competencies. The course outcome, artifacts, and section assessment results can support a later mastery decision. Competency attainment requires a verified result from the Master Assessment applicable to the program requirement. The degree audit leaves explicit competency requirements unevaluated until that verification exists. Existing manual evidence and substitutions continue to apply to eligible requirements of other types.
 
-In this foundation phase, Master Assessment tracks:
+Faculty Mentors require an explicit assignment to the student to assess competency mastery. Course Instructors require an applicable teaching assignment to enter traditional course grades. Both checks use the active institution and may apply to one faculty member, including someone who also holds a Student identity. Current faculty teaching gates authorize reading the assigned context. Faculty assessment entry must reuse the existing grading and completion workflows once institutional authority and review rules are defined.
 
-- the assessment definition,
-- the student attempt record,
-- the attempt status lifecycle.
-
-This phase does **not** yet:
-
-- calculate final section completion,
-- update `CourseEnrollment` automatically,
-- create `AcademicRecord` entries,
-- change transcript, GPA, degree audit, or attendance logic.
+See [ADR 0003](adr/0003-distinguish-course-achievement-from-competency-attainment.md).
 
 ## Scope of this foundation
 

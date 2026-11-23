@@ -3,14 +3,20 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\Students\Pages\EditStudent;
+use App\Filament\Resources\Students\Support\DegreeAuditPreview;
 use App\Models\AcademicRecord;
+use App\Models\AcademicTerm;
 use App\Models\Course;
+use App\Models\CourseOffering;
 use App\Models\DegreeConferral;
 use App\Models\Institution;
+use App\Models\MasterAssessment;
 use App\Models\Program;
 use App\Models\ProgramRequirement;
 use App\Models\ProgramRequirementGroup;
+use App\Models\ProgramRequirementSubstitution;
 use App\Models\Student;
+use App\Models\StudentMasterAssessmentAttempt;
 use App\Models\StudentRequirementEvidence;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -188,6 +194,56 @@ class DegreeConferralTest extends TestCase
 
         $evidence->update(['status' => 'archived']);
         $this->assertSame('waived', $award->fresh()->eligibility_snapshot['groups'][0]['requirements'][0]['evidence']['status']);
+    }
+
+    public function test_only_the_course_requirement_is_satisfied_by_supporting_course_achievement(): void
+    {
+        $record = $this->passingRecord();
+        $tenant = ['institution_id' => $this->institution->id];
+        $program = $tenant + ['program_id' => $this->program->id];
+        $competency = ProgramRequirement::create($program + [
+            'program_requirement_group_id' => $this->requirement->program_requirement_group_id,
+            'course_id' => $this->course->id, 'name' => 'Biblical interpretation mastery',
+            'requirement_type' => ProgramRequirement::TYPE_COMPETENCY, 'allow_substitution' => true,
+            'is_required' => true, 'is_active' => true, 'sort_order' => 1,
+        ]);
+        ProgramRequirementSubstitution::create($program + [
+            'student_id' => $this->student->id, 'program_requirement_id' => $competency->id,
+            'substitute_course_id' => $this->course->id, 'academic_record_id' => $record->id,
+            'status' => 'approved',
+        ]);
+        StudentRequirementEvidence::create($program + [
+            'student_id' => $this->student->id, 'program_requirement_id' => $competency->id,
+            'status' => 'approved', 'evidence_title' => 'Supporting paper',
+        ]);
+        $term = AcademicTerm::create($tenant + [
+            'name' => 'Fall', 'code' => 'F26', 'academic_year' => '2026–27',
+            'term_type' => 'fall', 'start_date' => '2026-09-01', 'end_date' => '2026-12-01',
+        ]);
+        $section = CourseOffering::create($tenant + [
+            'course_id' => $this->course->id, 'academic_term_id' => $term->id,
+            'section_code' => 'S1', 'delivery_mode' => 'online', 'status' => 'in_progress',
+        ]);
+        $assessment = MasterAssessment::create($tenant + [
+            'course_offering_id' => $section->id, 'title' => 'Course assessment', 'status' => MasterAssessment::STATUS_ACTIVE,
+        ]);
+        StudentMasterAssessmentAttempt::create($tenant + [
+            'master_assessment_id' => $assessment->id, 'course_offering_id' => $section->id,
+            'student_id' => $this->student->id, 'status' => StudentMasterAssessmentAttempt::STATUS_PASSED,
+        ]);
+
+        $audit = DegreeAuditPreview::getViewData($this->student);
+        $courseResult = $audit['completedRequirements']->sole();
+        $this->assertTrue($courseResult['requirement']->is($this->requirement));
+        $this->assertSame(3.0, $courseResult['earnedCredits']);
+        $competencyResult = $audit['notEvaluatedRequirements']->sole();
+        $this->assertTrue($competencyResult['requirement']->is($competency));
+        $this->assertSame(0.0, $competencyResult['earnedCredits']);
+        $this->assertEmpty($competencyResult['matchedRecords']);
+
+        $this->editor()->callAction('conferDegree', ['conferred_on' => '2026-11-01']);
+        $this->assertDatabaseCount('degree_conferrals', 0);
+        $this->assertModelExists($record);
     }
 
     public function test_award_cannot_be_changed_or_deleted_through_the_database(): void

@@ -13,8 +13,11 @@ class ProgramRequirement extends BaseModel
 {
     use HasInstitutionScope, HasUuid, SoftDeletes;
 
+    public const TYPE_COMPETENCY = 'competency';
+
     public const TYPES = [
         'specific_course' => 'Specific Course',
+        self::TYPE_COMPETENCY => 'Competency (Master Assessment Required)',
         'elective_credits' => 'Elective Credits',
         'transfer_credits' => 'Transfer Credits',
         'non_course_requirement' => 'Non-Course Requirement',

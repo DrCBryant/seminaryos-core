@@ -61,6 +61,21 @@ class PortalIdentityAuthorizationTest extends TestCase
         $this->assertDatabaseCount('faculty', 1);
     }
 
+    public function test_teaching_and_student_access_do_not_grant_access_to_registrar_assessment_entry(): void
+    {
+        $context = $this->context('assessor');
+        $institution = $context['institution'];
+        $admin = $this->account($institution, 'admin');
+        $dual = $this->account($institution, 'faculty');
+        $membershipId = $this->membershipId($dual, $institution);
+        AcademicIdentityAccess::link($admin, $context['student'], $membershipId);
+        AcademicIdentityAccess::link($admin, $context['faculty'], $membershipId);
+
+        $this->assertTrue($dual->can('view-own-student-identity', $context['student']));
+        $this->assertTrue($dual->can('view-assigned-teaching-section', $context['section']));
+        $this->actingAs($dual)->get(route('filament.admin.resources.master-assessments.create'))->assertForbidden();
+    }
+
     public function test_dual_identity_in_one_institution_has_separate_permissions_for_each_action(): void
     {
         $context = $this->context('first');

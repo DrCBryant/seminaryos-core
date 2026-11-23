@@ -22,6 +22,13 @@
 - Authorize each assessment action in the active institutional context using the applicable student mentorship or course teaching assignment. Each assignment grants authority only within its assigned scope.
 - Faculty assessment entry must reuse established grading, evidence, and guarded completion workflows. Finalized academic history remains protected under the existing durable record rules. Registrar review and finalization must follow explicit institutional policy.
 
+### Course Achievement and Competency Attainment
+
+- Traditional course requirements use eligible Academic Records and the configured course, credits, and grading rules. Guarded enrollment completion remains responsible for recording the course outcome.
+- A course may provide learning evidence for one or more competencies. A competency requires demonstrated mastery through its applicable Master Assessment. Course completion, course substitutions, generic approved evidence or waivers, and section assessment passes alone cannot establish program competency attainment.
+- Degree audit distinguishes explicit competency requirements from course requirements. It reports competency requirements as unevaluated until it can verify a link to the applicable assessment and the decision under institutional policy. Active unverified competency requirements block degree conferral through the existing eligibility checks.
+- Section progress and program competency attainment are separate decisions. See [ADR 0003](docs/adr/0003-distinguish-course-achievement-from-competency-attainment.md) and the [section progress architecture](docs/CLASS-SECTION-PROGRESS-ARCHITECTURE.md#master-assessment).
+
 ## Academic Terms
 
 - `AcademicTerm` is an institution-scoped core academic operations model. Its existing institution scope and relationships remain authoritative.
