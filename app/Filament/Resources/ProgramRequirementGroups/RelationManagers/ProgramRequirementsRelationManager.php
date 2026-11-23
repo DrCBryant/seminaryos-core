@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProgramRequirementGroups\RelationManagers;
 
+use App\Filament\Actions\ManageCompetencyAssessmentMapping;
 use App\Models\ProgramRequirement;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -46,6 +47,8 @@ class ProgramRequirementsRelationManager extends RelationManager
                             Select::make('requirement_type')
                                 ->label('Requirement type')
                                 ->options(ProgramRequirement::TYPES)
+                                ->disabled(fn (?ProgramRequirement $record): bool => $record?->masterAssessments()->exists() ?? false)
+                                ->helperText('Remove assessment mappings before changing the requirement type.')
                                 ->required(),
                             TextInput::make('name')
                                 ->required()
@@ -84,6 +87,9 @@ class ProgramRequirementsRelationManager extends RelationManager
                 TextColumn::make('requirement_type')
                     ->label('Type')
                     ->badge(),
+                TextColumn::make('masterAssessments.title')
+                    ->label('Mapped assessments')
+                    ->listWithLineBreaks(),
                 TextColumn::make('course.code')
                     ->label('Course')
                     ->searchable(),
@@ -103,6 +109,8 @@ class ProgramRequirementsRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make(),
+                ManageCompetencyAssessmentMapping::make(attach: true),
+                ManageCompetencyAssessmentMapping::make(attach: false),
                 DeleteAction::make(),
             ])
             ->toolbarActions([

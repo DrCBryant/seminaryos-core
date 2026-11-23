@@ -6,6 +6,7 @@ use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -83,5 +84,11 @@ class ProgramRequirement extends BaseModel
     public function programRequirementSubstitutions(): HasMany
     {
         return $this->hasMany(ProgramRequirementSubstitution::class);
+    }
+
+    public function masterAssessments(): BelongsToMany
+    {
+        return $this->belongsToMany(MasterAssessment::class, 'competency_assessment_mappings')
+            ->withPivotValue('requirement_type', ProgramRequirement::TYPE_COMPETENCY);
     }
 }

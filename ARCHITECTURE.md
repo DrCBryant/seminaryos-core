@@ -18,21 +18,23 @@
 ### Faculty Assessment Authority
 
 - Faculty Mentor and Course Instructor describe assigned academic responsibilities. A faculty member may hold both assignments at the same time, including while holding a Student identity through the same account.
-- In competency-based education, Faculty Mentors evaluate their assigned students and enter grades, competency results, and master assessments. In non-competency-based courses, assigned Course Instructors evaluate enrolled students and enter course grades.
+- Faculty Mentors have final academic authority over competencies for their assigned students. An assigned mentor can finalize a successful Master Assessment for its applicable mapped competencies. Course Instructors assess enrolled students in their assigned traditional courses through existing grading and guarded completion workflows.
 - Authorize each assessment action in the active institutional context using the applicable student mentorship or course teaching assignment. Each assignment grants authority only within its assigned scope.
-- Faculty assessment entry must reuse established grading, evidence, and guarded completion workflows. Finalized academic history remains protected under the existing durable record rules. Registrar review and finalization must follow explicit institutional policy.
+- The mentor’s finalized mastery decision immediately satisfies the mapped competencies in the degree audit. The Registrar verifies overall completion and authorizes formal conferral. Finalized mastery and course records retain their durable history protections.
 
 ### Faculty Portal
 
 - `/faculty` requires an active account, active institution and membership, and an explicitly linked Faculty identity. The linked Student identity and registrar permissions are evaluated independently.
 - **My Mentees** requires an explicit same-institution assignment managed from the Faculty edit page. It shows the assigned student's program, competency requirements, supporting course evidence, and recorded section Master Assessment history. **My Courses** uses active or assigned teaching records to show the matching enrollments, current progress evidence, and finalized course outcomes.
-- Faculty Portal academic views are read-only. Existing registrar workflows retain responsibility for recording and finalizing academic outcomes. See [ADR 0004](docs/adr/0004-scope-faculty-portal-access-to-academic-assignments.md) for the assignment and access boundaries.
+- My Mentees offers competency mastery finalization for eligible passed attempts. My Courses remains a read-only view. See [ADR 0004](docs/adr/0004-scope-faculty-portal-access-to-academic-assignments.md) for the assignment and access boundaries.
 
 ### Course Achievement and Competency Attainment
 
 - Traditional course requirements use eligible Academic Records and the configured course, credits, and grading rules. Guarded enrollment completion remains responsible for recording the course outcome.
 - A course may provide learning evidence for one or more competencies. A competency requires demonstrated mastery through its applicable Master Assessment. Course completion, course substitutions, generic approved evidence or waivers, and section assessment passes alone cannot establish program competency attainment.
-- Degree audit distinguishes explicit competency requirements from course requirements. It reports competency requirements as unevaluated until it can verify a link to the applicable assessment and the decision under institutional policy. Active unverified competency requirements block degree conferral through the existing eligibility checks.
+- Registrar administrators map assessments to competency requirements from the program requirement group. The many-to-many mapping uses explicit identifiers and database constraints for requirement type and institution. The same assessment can map to several competencies, independently of each requirement’s optional supporting course.
+- Finalization requires an active Master Assessment, a recorded passed attempt, and an active mentorship in the current institution. It captures only active mapped competencies in the student’s assigned program and preserves the original assessment, evidence, mentor, and decision time. A repeated request returns the saved decision. Removing a mapping affects future decisions and preserves attempts and settled mastery.
+- Degree audit reads finalized mastery separately from course achievement and awards no course credits or grade points for mastery. Active unverified requirements block conferral. Conferral snapshots retain the mastery evidence used in the eligibility decision.
 - Section progress and program competency attainment are separate decisions. See [ADR 0003](docs/adr/0003-distinguish-course-achievement-from-competency-attainment.md) and the [section progress architecture](docs/CLASS-SECTION-PROGRESS-ARCHITECTURE.md#master-assessment).
 
 ## Academic Terms

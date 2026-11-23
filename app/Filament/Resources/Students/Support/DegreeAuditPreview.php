@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Students\Support;
 
 use App\Models\AcademicRecord;
+use App\Models\CompetencyMasteryDecision;
 use App\Models\ProgramRequirement;
 use App\Models\ProgramRequirementGroup;
 use App\Models\ProgramRequirementSubstitution;
@@ -99,6 +100,18 @@ class DegreeAuditPreview
             ])
             ->values() ?? collect();
 
+        $masteryByRequirementId = [];
+        if ($student->program !== null) {
+            $decisions = $student->competencyMasteryDecisions()
+                ->where('institution_id', $student->institution_id)
+                ->where('program_id', $student->program->id)->orderBy('id')->get();
+            foreach ($decisions as $decision) {
+                foreach ($decision->snapshot['requirements'] as $target) {
+                    $masteryByRequirementId[$target['id']] ??= $decision;
+                }
+            }
+        }
+
         $requirementResults = collect();
         $groupResults = collect();
         $usedRecordIds = [];
@@ -122,7 +135,7 @@ class DegreeAuditPreview
                 ->values();
 
             foreach ($requirements as $requirement) {
-                $result = self::evaluateRequirement($requirement, $records, $evidenceByRequirementId, $substitutionsByRequirementId, $usedRecordIds, $remainingCreditsByRecordId);
+                $result = self::evaluateRequirement($requirement, $records, $evidenceByRequirementId, $substitutionsByRequirementId, $usedRecordIds, $remainingCreditsByRecordId, $masteryByRequirementId[$requirement->id] ?? null);
 
                 $groupRequirementResults->push($result);
                 $requirementResults->push($result);
@@ -166,12 +179,18 @@ class DegreeAuditPreview
         Collection $substitutionsByRequirementId,
         array &$usedRecordIds,
         array &$remainingCreditsByRecordId,
+        ?CompetencyMasteryDecision $mastery,
     ): array {
         if ($requirement->requirement_type === ProgramRequirement::TYPE_COMPETENCY) {
+            if ($mastery !== null) {
+                return self::baseRequirementResult($requirement, 'complete', 'Mastery verified by an assigned Faculty Mentor.')
+                    + ['mastery' => $mastery];
+            }
+
             return self::baseRequirementResult(
                 $requirement,
                 'not_evaluated',
-                'Competency attainment requires a verified Master Assessment for this requirement. The audit cannot verify that link yet.',
+                'Competency attainment requires a successful mapped Master Assessment finalized by an assigned Faculty Mentor.',
             );
         }
 

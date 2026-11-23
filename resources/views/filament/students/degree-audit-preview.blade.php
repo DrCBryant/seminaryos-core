@@ -142,6 +142,11 @@
                                         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ $requirement->description }}</p>
                                     @endif
                                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ $result['message'] }}</p>
+                                    @if ($mastery = $result['mastery'] ?? null)
+                                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                            {{ $mastery->snapshot['assessment']['title'] }} · {{ $mastery->snapshot['mentor_name'] }} · {{ $mastery->decided_at->toDateString() }}
+                                        </p>
+                                    @endif
                                 </div>
 
                                 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

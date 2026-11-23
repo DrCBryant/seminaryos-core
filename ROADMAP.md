@@ -98,11 +98,16 @@
 - Linked students can use their existing account to view their overview, courses, finalized academic record, advisory degree progress, and conferred awards in the selected institution.
 - Institution switching and student self-service workflows remain separate work.
 
-## Read-only Faculty Portal: Complete
+## Faculty Portal Foundation: Complete
 
 - Linked faculty can use their existing account to review assigned mentees and teaching rosters, competency evidence, section Master Assessment history, and recorded course progress and outcomes.
 - Institution administrators assign and remove mentees from the existing Faculty edit page. Dual-identity users can open either portal from the same session.
-- Faculty assessment entry and program-level mastery verification require explicit institutional decisions on assessment mapping, grading authority, registrar review, and finalization.
+- Instructor course views remain read-only. Any future delegated grade-entry UI must use existing grading and guarded completion workflows.
+
+## Competency Mapping and Mentor Finalization: Complete
+
+- Registrar administrators map section-bound Master Assessments to program competencies. An assigned Faculty Mentor can finalize a recorded passed attempt for its eligible mappings. The audit recognizes the permanent decision immediately, and the Registrar authorizes formal conferral.
+- Section-independent assessment, new grading scales or mastery thresholds, reassessment limits, and a correction workflow remain institutional policy work.
 
 ## Outside the Completed Academic Terms Goal
 

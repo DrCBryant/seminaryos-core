@@ -38,7 +38,8 @@ This document is descriptive architecture guidance only. It does not define impl
 1. In Registrar, an institution administrator opens **Faculty**, selects the faculty member, and uses **Link Account** to select an active member.
 2. Use **Assign Mentee** or **Remove Mentee** on the same Faculty record. These actions scope student selection to the institution. Create teaching assignments through the existing **Teaching Assignments** resource.
 3. The faculty member signs in at `/faculty/login` or opens `/faculty` using the existing session. **My Mentees** shows assigned students and competency evidence. **My Courses** shows enrollments for exact assigned sections or, for a direct assignment, only sectionless enrollments for the course and matching term.
-4. Academic views are read-only and omit unrelated confidential student and registrar data. Assessment entry awaits institutional policy on mastery verification, grading authority, and registrar review. Links to Student Portal and Registrar appear when the active account independently qualifies for each.
+4. Registrar administrators open a program requirement group and use **Map Master Assessment** or **Remove Assessment Mapping** on a competency requirement. Both sides must belong to the selected institution.
+5. In **My Mentees**, an assigned mentor can select **Finalize mastery** for a passed attempt on an active mapped assessment in the mentee’s program. This permanently records competency mastery. **My Courses** remains read-only, and only an authorized Registrar can formally confer the credential.
 
 ## Core Tenancy Principles
 

@@ -6,6 +6,7 @@ use App\Core\Models\BaseModel;
 use App\Core\Traits\HasInstitutionScope;
 use App\Core\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MasterAssessment extends BaseModel
@@ -50,5 +51,11 @@ class MasterAssessment extends BaseModel
     public function studentMasterAssessmentAttempts(): HasMany
     {
         return $this->hasMany(StudentMasterAssessmentAttempt::class);
+    }
+
+    public function competencyRequirements(): BelongsToMany
+    {
+        return $this->belongsToMany(ProgramRequirement::class, 'competency_assessment_mappings')
+            ->withPivotValue('requirement_type', ProgramRequirement::TYPE_COMPETENCY);
     }
 }

@@ -14,4 +14,4 @@ Reuse active or assigned TeachingAssignment records for instructional views. An 
 
 ## Consequences
 
-A mentorship does not grant teaching access. Teaching access does not grant mentorship or access to a student's complete academic history. Removing a mentorship revokes the corresponding view and preserves academic evidence. Student, Faculty, and authorized Registrar experiences share one session. Faculty assessment writes remain gated on the institutional decisions in [ADR 0003](0003-distinguish-course-achievement-from-competency-attainment.md).
+A mentorship does not grant teaching access. Teaching access does not grant mentorship or access to a student's complete academic history. Removing a mentorship revokes the corresponding view and preserves academic evidence. Student, Faculty, and authorized Registrar experiences share one session. Mentor mastery finalization follows the institutional rule in [ADR 0003](0003-distinguish-course-achievement-from-competency-attainment.md).

@@ -236,6 +236,7 @@ class DegreeConferralAction
                     'status' => $result['status'],
                     'basis' => $result['message'],
                     'evidence' => ($result['evidence'] ?? null)?->only(['id', 'status', 'evidence_title', 'completed_at', 'approved_at', 'approved_by_user_id']),
+                    'mastery' => ($result['mastery'] ?? null)?->only(['id', 'attempt_id', 'master_assessment_id', 'mentor_faculty_id', 'decided_by_user_id', 'decided_at', 'snapshot']),
                     'substitution' => ($result['substitution'] ?? null)?->only(['id', 'status', 'approved_at', 'approved_by_user_id']),
                     'records' => $result['matchedRecords']->map(function (AcademicRecord|array $entry): array {
                         $record = is_array($entry) ? $entry['record'] : $entry;

@@ -163,6 +163,7 @@ class StudentPortal extends Page
                 'status' => str($result['status'])->headline()->value(),
                 'basis' => match (true) {
                     isset($result['substitution']) && $result['requirement']->allow_substitution => 'Approved substitution',
+                    isset($result['mastery']) => 'Verified Master Assessment',
                     isset($result['evidence']) => 'Approved or waived evidence',
                     default => null,
                 },

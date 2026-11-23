@@ -79,18 +79,26 @@
             <h2>{{ $mentee['name'] }} · {{ $mentee['program'] ?? 'No program assigned' }}</h2>
             @include('filament.student-portal.table', [
                 'label' => 'Program competencies',
-                'columns' => ['title' => 'Competency', 'status' => 'Attainment', 'course' => 'Supporting coursework', 'evidence' => 'Recorded evidence'],
+                'columns' => ['title' => 'Competency', 'status' => 'Attainment', 'course' => 'Supporting coursework', 'evidence' => 'Recorded evidence', 'assessments' => 'Mapped assessments', 'decision' => 'Verified mastery'],
                 'rows' => $mentee['competencies'],
                 'emptyMessage' => 'No competency requirements are configured for this program.',
             ])
-            <p class="student-portal-note">Program competency attainment requires a verified Master Assessment linked to the requirement.</p>
+            <p class="student-portal-note">A passed attempt supports section progress. An assigned mentor can finalize it as mastery for the mapped competencies in this program.</p>
             <h2>Section Master Assessment history</h2>
             @include('filament.student-portal.table', [
                 'label' => 'Section Master Assessment history',
-                'columns' => ['title' => 'Assessment', 'status' => 'Attempt status', 'submitted' => 'Submitted', 'assessed' => 'Assessed'],
+                'columns' => ['title' => 'Assessment', 'status' => 'Attempt status', 'submitted' => 'Submitted', 'assessed' => 'Assessed', 'finalized' => 'Mastery finalized'],
                 'rows' => $mentee['attempts'],
                 'emptyMessage' => 'No Master Assessment attempts are on record.',
             ])
+            @foreach ($mentee['attempts']->where('canFinalize', true) as $attempt)
+                <div class="student-portal-context">
+                    <span>{{ $attempt['title'] }}</span>
+                    <x-filament::button wire:click="mountAction('finalizeMastery', { attempt: {{ $attempt['id'] }} })">
+                        Finalize mastery
+                    </x-filament::button>
+                </div>
+            @endforeach
         @endif
 
         @if ($course)

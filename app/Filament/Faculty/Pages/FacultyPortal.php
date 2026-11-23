@@ -13,13 +13,17 @@ use App\Models\StudentMasterAssessmentAttempt;
 use App\Models\StudentRequirementEvidence;
 use App\Models\StudentSectionSubmission;
 use App\Models\TeachingAssignment;
+use App\Support\Assessments\FinalizeCompetencyMastery;
 use App\Support\Portals\AcademicIdentityAccess;
 use App\Support\SectionProgress\SectionProgressEvaluator;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 
 class FacultyPortal extends Page
@@ -123,6 +127,27 @@ class FacultyPortal extends Page
         ];
     }
 
+    public function finalizeMasteryAction(): Action
+    {
+        return Action::make('finalizeMastery')
+            ->label('Finalize mastery')
+            ->authorize(fn (): bool => $this->section === 'mentees' && $this->selection !== null)
+            ->requiresConfirmation()
+            ->modalDescription('Record this passed attempt as verified mastery for the applicable mapped competencies. The decision and its evidence are permanent.')
+            ->action(function (Action $action, array $arguments, FinalizeCompetencyMastery $service): void {
+                $attemptId = filter_var($arguments['attempt'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                abort_unless($this->section === 'mentees' && $this->selection !== null && $attemptId !== false, 404);
+                try {
+                    $service->finalize(auth()->user(), $this->selection, $attemptId);
+                } catch (ValidationException $exception) {
+                    Notification::make()->title('Mastery could not be finalized')
+                        ->body($exception->validator->errors()->first())->warning()->send();
+                    $action->halt();
+                }
+            })
+            ->successNotificationTitle('Mastery finalized');
+    }
+
     private function menteeDetail(Student $student): array
     {
         Gate::authorize('view-assigned-mentee', $student);
@@ -130,6 +155,12 @@ class FacultyPortal extends Page
         $competencies = DegreeAuditPreview::getViewData($student)['groupResults']
             ->flatMap(fn (array $group): Collection => $group['requirements'])
             ->filter(fn (array $result): bool => $result['requirement']->requirement_type === ProgramRequirement::TYPE_COMPETENCY);
+        $requirements = new \Illuminate\Database\Eloquent\Collection($competencies->pluck('requirement')->all());
+        $requirements->load('masterAssessments.courseOffering');
+        $applicableAssessments = $requirements->flatMap(fn (ProgramRequirement $requirement) => $requirement->masterAssessments)
+            ->where('status', MasterAssessment::STATUS_ACTIVE)->pluck('id');
+        $decisions = $student->competencyMasteryDecisions()->get()->keyBy('attempt_id');
+
         $evidence = $student->studentRequirementEvidence
             ->where('program_id', $student->program_id)->where('status', '!=', 'archived')
             ->groupBy('program_requirement_id');
@@ -141,6 +172,11 @@ class FacultyPortal extends Page
             'competencies' => $competencies->map(fn (array $result): array => [
                 'title' => $result['requirement']->name,
                 'status' => self::label($result['status']),
+                'assessments' => $result['requirement']->masterAssessments
+                    ->map(fn (MasterAssessment $assessment): string => $assessment->title.' · '.($assessment->courseOffering?->section_code ?? 'Section unavailable'))
+                    ->implode(', '),
+                'decision' => isset($result['mastery']) ? $result['mastery']->snapshot['assessment']['title']
+                    .' · '.$result['mastery']->snapshot['mentor_name'].' · '.$result['mastery']->decided_at->toDateString() : null,
                 'evidence' => $evidence->get($result['requirement']->id, collect())
                     ->map(fn (StudentRequirementEvidence $item): string => $item->evidence_title.' ('.self::label($item->status).')')->implode(', '),
                 'course' => $result['requirement']->course_id === null ? null : $records->get($result['requirement']->course_id, collect())
@@ -150,10 +186,15 @@ class FacultyPortal extends Page
                 ->whereHas('masterAssessment', fn (Builder $query) => $query
                     ->whereColumn('master_assessments.course_offering_id', 'student_master_assessment_attempts.course_offering_id'))
                 ->latest('assessed_at')->latest('id')->get()->map(fn (StudentMasterAssessmentAttempt $attempt): array => [
+                    'id' => $attempt->id,
                     'title' => $attempt->masterAssessment->title,
                     'status' => self::label($attempt->status),
                     'submitted' => $attempt->submitted_at?->toDateString(),
                     'assessed' => $attempt->assessed_at?->toDateString(),
+                    'finalized' => $decisions->get($attempt->id)?->decided_at->toDateString(),
+                    'canFinalize' => ! $decisions->has($attempt->id)
+                        && $attempt->status === StudentMasterAssessmentAttempt::STATUS_PASSED
+                        && $applicableAssessments->contains($attempt->master_assessment_id),
                 ]),
         ];
     }
